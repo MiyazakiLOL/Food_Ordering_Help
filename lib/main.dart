@@ -3,8 +3,33 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'order_model.dart';
 import 'order_repository.dart';
 
-// Giả sử bạn đã khởi tạo Supabase ở hàm main()
-// await Supabase.initialize(url: 'YOUR_URL', anonKey: 'YOUR_KEY');
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Khởi tạo Supabase (Thay thế URL và Key của bạn vào đây)
+  await Supabase.initialize(
+    url: 'https://jibbotejwrsknrixwcpj.supabase.co',
+   anonKey: 'sb_publishable_z4QPDgf9Q3nq_kqnWj4bTQ_2i0JORHW',
+  );
+
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Food Ordering App',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        useMaterial3: true,
+      ),
+      home: const OrderTrackingPage(orderId: 'YOUR_ORDER_ID'),
+    );
+  }
+}
 
 class OrderTrackingPage extends StatefulWidget {
   final String orderId; // Truyền ID đơn hàng từ màn hình danh sách vào
@@ -47,7 +72,10 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                 if (status == 'delivered')
                   Container(
                     padding: const EdgeInsets.all(15),
-                    color: Colors.green[50],
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: const Text("🎉 Đã giao thành công! Hóa đơn đã được gửi."),
                   )
               ],
