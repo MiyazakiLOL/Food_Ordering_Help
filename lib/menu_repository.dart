@@ -44,35 +44,35 @@ class MenuRepository {
       id: 's1',
       name: 'Trà Sữa Nhà Làm',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?bubble-tea,milk-tea',
+          'https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=1200&q=80',
       rating: 4.9,
     ),
     StoreModel(
       id: 's2',
       name: 'Bún Đậu 79',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?vietnamese-food,street-food',
+          'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=1200&q=80',
       rating: 4.7,
     ),
     StoreModel(
       id: 's3',
       name: 'Cơm Gà Đà Nẵng',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?rice,roast-chicken',
+          'https://images.unsplash.com/photo-1516684732162-798a0062be99?auto=format&fit=crop&w=1200&q=80',
       rating: 4.8,
     ),
     StoreModel(
       id: 's4',
       name: 'Phở Bò Gia Truyền',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?pho,beef-noodle-soup',
+          'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=1200&q=80',
       rating: 4.9,
     ),
     StoreModel(
       id: 's5',
       name: 'Đồ Ăn Vặt Cô Ba',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?street-food,snacks',
+          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
       rating: 4.6,
     ),
   ];
@@ -84,7 +84,7 @@ class MenuRepository {
       name: 'Trà Sữa Trân Châu Đường Đen',
       description: 'Vị sữa đậm, trân châu dẻo, uống là mê.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?bubble-tea,boba',
+          'https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=1200&q=80',
       price: 39000,
       isFeatured: true,
       category: 'Trà sữa',
@@ -96,7 +96,7 @@ class MenuRepository {
       name: 'Hồng Trà Kem Cheese',
       description: 'Hồng trà thơm, lớp kem mặn béo gây nghiện.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?tea,cheese-foam',
+          'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=1200&q=80',
       price: 45000,
       isFeatured: true,
       category: 'Trà sữa',
@@ -108,7 +108,7 @@ class MenuRepository {
       name: 'Cơm Gà Quay Sốt Cay',
       description: 'Gà giòn da, sốt cay vừa, cơm nóng hổi.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?chicken-rice,roasted-chicken',
+          'https://images.unsplash.com/photo-1516684732162-798a0062be99?auto=format&fit=crop&w=1200&q=80',
       price: 55000,
       isFeatured: true,
       category: 'Cơm',
@@ -119,7 +119,8 @@ class MenuRepository {
       storeId: 's4',
       name: 'Phở Bò Tái Nạm',
       description: 'Nước dùng ngọt thanh, bánh phở mềm dai.',
-      imageUrl: 'https://source.unsplash.com/featured/1200x800/?pho,beef-soup',
+      imageUrl:
+          'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=1200&q=80',
       price: 62000,
       isFeatured: true,
       category: 'Bún',
@@ -131,7 +132,7 @@ class MenuRepository {
       name: 'Bánh Tráng Trộn Đặc Biệt',
       description: 'Đậm vị me, khô bò, trứng cút và xoài xanh.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?rice-paper-salad,vietnamese-snack',
+          'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?auto=format&fit=crop&w=1200&q=80',
       price: 30000,
       isFeatured: true,
       category: 'Ăn vặt',
@@ -143,7 +144,7 @@ class MenuRepository {
       name: 'Bún Đậu Mắm Tôm Combo',
       description: 'Đậu rán giòn, thịt luộc, chả cốm, mắm tôm chuẩn vị.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?bun-dau,street-food',
+          'https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=1200&q=80',
       price: 68000,
       isFeatured: true,
       category: 'Bún',
@@ -155,7 +156,7 @@ class MenuRepository {
       name: 'Cơm Sườn Nướng Mật Ong',
       description: 'Sườn mềm, thơm mùi nướng than, ăn kèm đồ chua.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?grilled-pork,rice',
+          'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=1200&q=80',
       price: 59000,
       isFeatured: true,
       category: 'Cơm',
@@ -167,7 +168,7 @@ class MenuRepository {
       name: 'Trà Đào Cam Sả',
       description: 'Mát lạnh, thanh vị trà, topping đào giòn ngon.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?peach-tea,iced-tea',
+          'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=1200&q=80',
       price: 42000,
       isFeatured: true,
       category: 'Trà sữa',
@@ -179,7 +180,7 @@ class MenuRepository {
       name: 'Khoai Tây Lắc Phô Mai',
       description: 'Khoai chiên vàng, lắc đều phô mai béo thơm.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?french-fries,cheese',
+          'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=1200&q=80',
       price: 35000,
       isFeatured: true,
       category: 'Ăn vặt',
@@ -191,7 +192,7 @@ class MenuRepository {
       name: 'Bún Bò Huế Đặc Biệt',
       description: 'Nước lèo đậm đà, sợi bún to, chả và giò đầy đặn.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?bun-bo-hue,beef-noodle-soup',
+          'https://images.unsplash.com/photo-1625937753309-8f0d8b0f31eb?auto=format&fit=crop&w=1200&q=80',
       price: 70000,
       isFeatured: true,
       category: 'Bún',
@@ -203,7 +204,7 @@ class MenuRepository {
       name: 'Nem Chua Rán Hà Nội',
       description: 'Giòn rụm bên ngoài, chấm tương ớt cực cuốn.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?fried-sausage,vietnamese-snack',
+          'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=1200&q=80',
       price: 45000,
       isFeatured: true,
       category: 'Ăn vặt',
@@ -215,7 +216,7 @@ class MenuRepository {
       name: 'Bánh Gạo Cay Tokbokki',
       description: 'Sốt cay ngọt Hàn Quốc, phô mai kéo sợi.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?tokbokki,korean-food',
+          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80',
       price: 52000,
       isFeatured: true,
       category: 'Ăn vặt',
@@ -227,7 +228,7 @@ class MenuRepository {
       name: 'Mì Ý Sốt Bò Bằm',
       description: 'Sợi mì dai vừa, sốt cà chua bò bằm đậm vị.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?spaghetti,bolognese',
+          'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=1200&q=80',
       price: 64000,
       isFeatured: true,
       category: 'Ăn vặt',
@@ -239,7 +240,7 @@ class MenuRepository {
       name: 'Gỏi Cuốn Tôm Thịt',
       description: 'Rau tươi, tôm thịt đầy đặn, nước chấm đậu phộng.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?spring-rolls,vietnamese-food',
+          'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1200&q=80',
       price: 38000,
       isFeatured: true,
       category: 'Ăn vặt',
@@ -250,7 +251,8 @@ class MenuRepository {
       storeId: 's1',
       name: 'Matcha Latte Kem Sữa',
       description: 'Matcha thơm dịu, kem sữa béo mượt.',
-      imageUrl: 'https://source.unsplash.com/featured/1200x800/?matcha-latte',
+      imageUrl:
+          'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?auto=format&fit=crop&w=1200&q=80',
       price: 49000,
       isFeatured: true,
       category: 'Trà sữa',
@@ -262,7 +264,7 @@ class MenuRepository {
       name: 'Há Cảo Tôm Hấp',
       description: 'Vỏ mỏng mềm, nhân tôm ngọt tự nhiên.',
       imageUrl:
-          'https://source.unsplash.com/featured/1200x800/?dumplings,dim-sum',
+          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80',
       price: 47000,
       isFeatured: true,
       category: 'Ăn vặt',

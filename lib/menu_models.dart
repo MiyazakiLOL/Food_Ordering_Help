@@ -12,12 +12,20 @@ class StoreModel {
   });
 
   factory StoreModel.fromMap(Map<String, dynamic> map) {
+    final url = (map['image_url'] ?? '').toString();
     return StoreModel(
       id: map['id'].toString(),
       name: (map['name'] ?? 'Cửa hàng').toString(),
-      imageUrl: (map['image_url'] ?? '').toString(),
+      imageUrl: _normalizeStoreImage(url),
       rating: (map['rating'] ?? 4.5).toDouble(),
     );
+  }
+
+  static String _normalizeStoreImage(String url) {
+    if (url.isEmpty || url.contains('source.unsplash.com')) {
+      return 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80';
+    }
+    return url;
   }
 }
 
@@ -47,15 +55,19 @@ class MenuItemModel {
   factory MenuItemModel.fromMap(Map<String, dynamic> map) {
     final name = (map['name'] ?? 'Món ăn').toString();
     final rawCategory = (map['category'] ?? '').toString();
+    final category = rawCategory.isEmpty ? _inferCategory(name) : rawCategory;
     return MenuItemModel(
       id: map['id'].toString(),
       storeId: (map['store_id'] ?? '').toString(),
       name: name,
       description: (map['description'] ?? '').toString(),
-      imageUrl: (map['image_url'] ?? '').toString(),
+      imageUrl: _normalizeFoodImage(
+        (map['image_url'] ?? '').toString(),
+        category,
+      ),
       price: (map['price'] ?? 0).toDouble(),
       isFeatured: (map['is_featured'] ?? false) as bool,
-      category: rawCategory.isEmpty ? _inferCategory(name) : rawCategory,
+      category: category,
       discountPercent: _toInt(map['discount_percent']),
     );
   }
@@ -82,6 +94,23 @@ class MenuItemModel {
       return 'Bún';
     }
     return 'Ăn vặt';
+  }
+
+  static String _normalizeFoodImage(String url, String category) {
+    if (url.isNotEmpty && !url.contains('source.unsplash.com')) {
+      return url;
+    }
+
+    switch (category) {
+      case 'Trà sữa':
+        return 'https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=1200&q=80';
+      case 'Cơm':
+        return 'https://images.unsplash.com/photo-1516684732162-798a0062be99?auto=format&fit=crop&w=1200&q=80';
+      case 'Bún':
+        return 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=1200&q=80';
+      default:
+        return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80';
+    }
   }
 }
 
