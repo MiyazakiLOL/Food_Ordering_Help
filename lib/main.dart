@@ -3,6 +3,8 @@ import 'package:flutter/gestures.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'cart_controller.dart';
+import 'auth/auth_gate.dart';
+import 'profile/profile_page.dart';
 import 'menu_models.dart';
 import 'menu_repository.dart';
 
@@ -67,10 +69,12 @@ class _MyAppState extends State<MyApp> {
           scrolledUnderElevation: 0,
         ),
       ),
-      home: HomePage(
-        cart: _cart,
-        onAddToCart: _addToCart,
-        onRemoveFromCart: _removeFromCart,
+      home: AuthGate(
+        signedIn: HomePage(
+          cart: _cart,
+          onAddToCart: _addToCart,
+          onRemoveFromCart: _removeFromCart,
+        ),
       ),
     );
   }
@@ -161,6 +165,15 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfilePage()),
+              );
+            },
+          ),
           IconButton(
             icon: Badge(
               isLabelVisible: widget.cart.totalItems > 0,
