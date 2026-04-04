@@ -100,21 +100,32 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final MenuRepository _repository = MenuRepository();
   final ScrollController _storeScrollController = ScrollController();
+  
   static const List<String> _categories = [
     'Tất cả',
     'Trà sữa',
-    'Cơm',
-    'Bún',
-    'Ăn vặt',
+    'Cà phê',
+    'Đồ ăn vặt',
+    'Thức ăn nhanh',
+    'Sinh tố & Nước ép',
   ];
+  
   late Future<HomeData> _homeFuture;
   String? _selectedStoreId;
   String _selectedCategory = 'Tất cả';
+  int _currentPage = 0;
+  final int _pageSize = 10;
 
   @override
   void initState() {
     super.initState();
-    _homeFuture = _repository.fetchHomeData();
+    _loadData();
+  }
+
+  void _loadData() {
+    setState(() {
+      _homeFuture = _repository.fetchHomeData(page: _currentPage, pageSize: _pageSize);
+    });
   }
 
   @override
@@ -214,6 +225,7 @@ class _HomePageState extends State<HomePage> {
           if (data == null) {
             return const Center(child: Text('Không có dữ liệu để hiển thị'));
           }
+
           final byStore = _selectedStoreId == null
               ? data.featuredItems
               : data.featuredItems
@@ -224,6 +236,7 @@ class _HomePageState extends State<HomePage> {
               : byStore
                     .where((item) => item.category == _selectedCategory)
                     .toList();
+
           final dealItems = data.featuredItems
               .where((item) => item.discountPercent > 0)
               .take(6)
@@ -231,18 +244,19 @@ class _HomePageState extends State<HomePage> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              final fresh = _repository.fetchHomeData();
+              _currentPage = 0;
+              _loadData();
               setState(() {
-                _homeFuture = fresh;
                 _selectedStoreId = null;
                 _selectedCategory = 'Tất cả';
               });
-              await fresh;
+              await _homeFuture;
             },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
+                // Banner Deals
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -287,8 +301,7 @@ class _HomePageState extends State<HomePage> {
                           itemCount: dealItems.length,
                           separatorBuilder: (_, _) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
-                            final deal = dealItems[index];
-                            return _DealFoodItem(item: deal);
+                            return _DealFoodItem(item: dealItems[index]);
                           },
                         ),
                       ),
@@ -390,10 +403,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 const SizedBox(height: 12),
+                
+                // Danh sách sản phẩm
                 if (displayedItems.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: Text('Quán này chưa có món nổi bật.')),
+                    child: Center(child: Text('Không có món ăn phù hợp.')),
                   )
                 else
                   ...displayedItems.map(
@@ -413,9 +428,7 @@ class _HomePageState extends State<HomePage> {
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(
-                                'Đã thêm ${item.name} vào giỏ hàng',
-                              ),
+                              content: Text('Đã thêm ${item.name} vào giỏ hàng'),
                               duration: const Duration(milliseconds: 900),
                             ),
                           );
@@ -436,6 +449,52 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
+
+                // Pagination Controls
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: _currentPage > 0 
+                        ? () { 
+                            _currentPage--; 
+                            _loadData(); 
+                          } 
+                        : null,
+                      icon: const Icon(Icons.chevron_left),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade200,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Trang ${_currentPage + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: displayedItems.length == _pageSize 
+                        ? () { 
+                            _currentPage++; 
+                            _loadData(); 
+                          } 
+                        : null,
+                      icon: const Icon(Icons.chevron_right),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade200,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
               ],
             ),
           );
@@ -458,23 +517,23 @@ class _StoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 220,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 155,
         decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          color: const Color(0xFFFFFBF1),
           border: Border.all(
-            color: selected ? const Color(0xFF0E9F6E) : const Color(0xFFFFE4B5),
-            width: selected ? 2 : 1,
+            color: selected ? const Color(0xFF0E9F6E) : Colors.transparent,
+            width: 2.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -482,24 +541,21 @@ class _StoreCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
               child: Image.network(
                 store.imageUrl,
-                height: 120,
+                height: 100,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  height: 120,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 100,
                   color: Colors.grey.shade200,
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.storefront_outlined),
+                  child: const Icon(Icons.storefront, color: Colors.grey),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -507,21 +563,26 @@ class _StoreCard extends StatelessWidget {
                     store.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                      const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
                       const SizedBox(width: 4),
-                      Text(store.rating.toStringAsFixed(1)),
-                      const Spacer(),
-                      if (selected)
-                        const Icon(
-                          Icons.check_circle,
-                          color: Color(0xFF0E9F6E),
-                          size: 18,
+                      Text(
+                        store.rating.toString(),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                      const Spacer(),
+                      const Text(
+                        '• 1.5km',
+                        style: TextStyle(color: Colors.grey, fontSize: 11),
+                      ),
                     ],
                   ),
                 ],
@@ -534,177 +595,99 @@ class _StoreCard extends StatelessWidget {
   }
 }
 
-class _HeroBanner extends StatelessWidget {
-  final List<MenuItemModel> dealItems;
+class _FoodCard extends StatelessWidget {
+  final MenuItemModel item;
+  final VoidCallback onTap;
+  final VoidCallback onQuickAdd;
 
-  const _HeroBanner({required this.dealItems});
+  const _FoodCard({
+    required this.item,
+    required this.onTap,
+    required this.onQuickAdd,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 290,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(
-          fit: StackFit.expand,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
           children: [
-            Positioned.fill(
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
               child: Image.network(
-                dealItems.isNotEmpty ? dealItems.first.imageUrl : '',
+                item.imageUrl,
+                width: 95,
+                height: 95,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF0E9F6E), Color(0xFFF59E0B)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
+                errorBuilder: (_, __, ___) => Container(
+                  width: 95,
+                  height: 95,
+                  color: Colors.grey.shade100,
+                  child: const Icon(Icons.fastfood, color: Colors.grey),
                 ),
               ),
             ),
-            Container(color: Colors.black.withValues(alpha: 0.38)),
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0x55000000), Color(0xCC000000)],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18),
+            const SizedBox(width: 14),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: const Text(
-                          'Trùm deal ngon hôm nay',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE11D48),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Text(
-                          'Giảm đến 30%',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  const Text(
-                    'Chọn món ngon hôm nay',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      height: 1.05,
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: Color(0xFF1F2937),
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Món đẹp mắt, giá rõ ràng, đặt nhanh trong vài chạm.',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
                   Row(
-                    children: const [
-                      _HeroStatChip(label: 'Giao nhanh'),
-                      SizedBox(width: 8),
-                      _HeroStatChip(label: 'Ảnh món thật'),
-                      SizedBox(width: 8),
-                      _HeroStatChip(label: 'Deal hot mỗi ngày'),
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        formatPriceVnd(item.price),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          color: Color(0xFF0E9F6E),
+                        ),
+                      ),
+                      IconButton.filled(
+                        onPressed: onQuickAdd,
+                        icon: const Icon(Icons.add, size: 20),
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(0xFF0E9F6E),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 78,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: dealItems.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final deal = dealItems[index];
-                        return _DealFoodItem(item: deal);
-                      },
-                    ),
                   ),
                 ],
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroStatChip extends StatelessWidget {
-  final String label;
-
-  const _HeroStatChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -719,11 +702,12 @@ class _DealFoodItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 250,
+      width: 140,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24),
       ),
       child: Row(
         children: [
@@ -731,23 +715,16 @@ class _DealFoodItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             child: Image.network(
               item.imageUrl,
-              width: 56,
-              height: 56,
+              width: 50,
+              height: 50,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                width: 56,
-                height: 56,
-                color: Colors.white24,
-                alignment: Alignment.center,
-                child: const Icon(Icons.image, color: Colors.white),
-              ),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   item.name,
@@ -755,36 +732,17 @@ class _DealFoodItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        formatPriceVnd(item.price),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        formatPriceVnd(item.originalPrice),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  formatPriceVnd(item.price),
+                  style: const TextStyle(
+                    color: Color(0xFFFFD700),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -795,157 +753,9 @@ class _DealFoodItem extends StatelessWidget {
   }
 }
 
-class _FoodCard extends StatelessWidget {
-  final MenuItemModel item;
-  final VoidCallback onQuickAdd;
-  final VoidCallback onTap;
-
-  const _FoodCard({
-    required this.item,
-    required this.onQuickAdd,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: const Color(0xFFFFF7ED),
-          border: Border.all(color: const Color(0xFFFFD7A8)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(16),
-              ),
-              child: Stack(
-                children: [
-                  Image.network(
-                    item.imageUrl,
-                    height: 130,
-                    width: 115,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      height: 130,
-                      width: 115,
-                      color: Colors.grey.shade200,
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.fastfood),
-                    ),
-                  ),
-                  if (item.discountPercent > 0)
-                    Positioned(
-                      left: 6,
-                      top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE11D48),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Giảm ${item.discountPercent}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          formatPriceVnd(item.price),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0E9F6E),
-                          ),
-                        ),
-                        if (item.discountPercent > 0)
-                          Text(
-                            formatPriceVnd(item.originalPrice),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF6B7280),
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          backgroundColor: const Color(0xFF0E9F6E),
-                        ),
-                        onPressed: onQuickAdd,
-                        icon: const Icon(Icons.add_shopping_cart, size: 18),
-                        label: const Text('Thêm nhanh'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(Icons.arrow_forward_ios, size: 16),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class FoodDetailPage extends StatefulWidget {
   final MenuItemModel item;
-  final void Function(MenuItemModel item, FoodCustomization customization)
-  onAddToCart;
+  final void Function(MenuItemModel item, FoodCustomization customization) onAddToCart;
 
   const FoodDetailPage({
     super.key,
@@ -958,239 +768,175 @@ class FoodDetailPage extends StatefulWidget {
 }
 
 class _FoodDetailPageState extends State<FoodDetailPage> {
-  String _size = 'M';
-  String _sugar = '70%';
-  String _ice = '70%';
-  final Set<String> _toppings = <String>{};
+  String _selectedSize = 'M';
+  String _selectedSugar = '70%';
+  String _selectedIce = '70%';
+  final List<String> _selectedToppings = [];
 
-  final List<String> _sizeOptions = const ['M', 'L'];
-  final List<String> _sugarOptions = const ['100%', '70%', '50%', '30%', '0%'];
-  final List<String> _iceOptions = const ['100%', '70%', '50%', '30%', '0%'];
-  final List<String> _toppingOptions = const [
-    'Trân châu đen',
-    'Trân châu trắng',
-    'Pudding',
-    'Thạch phô mai',
-  ];
+  void _toggleTopping(String topping) {
+    setState(() {
+      if (_selectedToppings.contains(topping)) {
+        _selectedToppings.remove(topping);
+      } else {
+        _selectedToppings.add(topping);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final current = FoodCustomization(
-      size: _size,
-      sugar: _sugar,
-      ice: _ice,
-      toppings: _toppings.toList(),
-    );
-    final finalPrice = widget.item.price + current.extraPrice;
+    final extraPrice = _selectedSize == 'L' ? 7000 : 0;
+    final toppingsPrice = _selectedToppings.length * 5000;
+    final totalPrice = widget.item.price + extraPrice + toppingsPrice;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.item.name)),
-      body: ListView(
-        children: [
-          Image.network(
-            widget.item.imageUrl,
-            height: 260,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              height: 260,
-              color: Colors.grey.shade200,
-              alignment: Alignment.center,
-              child: const Icon(Icons.image_not_supported_outlined, size: 42),
+      extendBodyBehindAppBar: true, // Cho phép body tràn lên dưới AppBar
+      appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundColor: Colors.black.withOpacity(0.3),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Stack(
               children: [
-                Text(
-                  widget.item.name,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(widget.item.description),
-                const SizedBox(height: 10),
-                Text(
-                  'Giá: ${formatPriceVnd(finalPrice)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0E9F6E),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                _optionGroup(
-                  title: 'Chọn size',
-                  values: _sizeOptions,
-                  selected: _size,
-                  onChanged: (v) => setState(() => _size = v),
-                ),
-                _optionGroup(
-                  title: 'Độ đường',
-                  values: _sugarOptions,
-                  selected: _sugar,
-                  onChanged: (v) => setState(() => _sugar = v),
-                ),
-                _optionGroup(
-                  title: 'Lượng đá',
-                  values: _iceOptions,
-                  selected: _ice,
-                  onChanged: (v) => setState(() => _ice = v),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Topping (+5,000đ / món)',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: _toppingOptions
-                      .map(
-                        (top) => FilterChip(
-                          label: Text(top),
-                          selected: _toppings.contains(top),
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _toppings.add(top);
-                              } else {
-                                _toppings.remove(top);
-                              }
-                            });
-                          },
-                        ),
-                      )
-                      .toList(),
+                Image.network(
+                  widget.item.imageUrl,
+                  height: 300,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
               ],
             ),
           ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.all(12),
-        child: FilledButton.icon(
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-          ),
-          onPressed: () {
-            widget.onAddToCart(widget.item, current);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Đã thêm món vào giỏ hàng')),
-            );
-            Navigator.pop(context);
-          },
-          icon: const Icon(Icons.add_shopping_cart),
-          label: const Text('Thêm vào giỏ'),
-        ),
-      ),
-    );
-  }
-
-  Widget _optionGroup({
-    required String title,
-    required List<String> values,
-    required String selected,
-    required ValueChanged<String> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: values
-              .map(
-                (value) => ChoiceChip(
-                  label: Text(value),
-                  selected: selected == value,
-                  onSelected: (_) => onChanged(value),
-                ),
-              )
-              .toList(),
-        ),
-        const SizedBox(height: 14),
-      ],
-    );
-  }
-}
-
-class CartPage extends StatefulWidget {
-  final CartController cart;
-  final void Function(int index) onRemoveAt;
-
-  const CartPage({super.key, required this.cart, required this.onRemoveAt});
-
-  @override
-  State<CartPage> createState() => _CartPageState();
-}
-
-class _CartPageState extends State<CartPage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Giỏ hàng')),
-      body: widget.cart.items.isEmpty
-          ? const Center(child: Text('Giỏ hàng đang trống'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: widget.cart.items.length,
-              itemBuilder: (context, index) {
-                final cartItem = widget.cart.items[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    title: Text(cartItem.item.name),
-                    subtitle: Text(
-                      '${cartItem.customization.summary}\nSL: ${cartItem.quantity}',
-                    ),
-                    isThreeLine: true,
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          formatPriceVnd(cartItem.totalPrice),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            widget.onRemoveAt(index);
-                            setState(() {});
-                          },
-                          child: const Text('Xóa'),
-                        ),
-                      ],
-                    ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.item.name,
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                );
-              },
-            ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Tổng: ${formatPriceVnd(widget.cart.grandTotal)}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.item.description,
+                    style: const TextStyle(color: Colors.grey, fontSize: 15),
+                  ),
+                  const Divider(height: 40),
+                  
+                  _sectionTitle('Chọn Size'),
+                  Wrap(
+                    spacing: 12,
+                    children: ['S', 'M', 'L'].map((s) => ChoiceChip(
+                      label: Text('Size $s'),
+                      selected: _selectedSize == s,
+                      onSelected: (_) => setState(() => _selectedSize = s),
+                    )).toList(),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  _sectionTitle('Mức đường'),
+                  Wrap(
+                    spacing: 12,
+                    children: ['0%', '30%', '50%', '70%', '100%'].map((s) => ChoiceChip(
+                      label: Text(s),
+                      selected: _selectedSugar == s,
+                      onSelected: (_) => setState(() => _selectedSugar = s),
+                    )).toList(),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  _sectionTitle('Mức đá'),
+                  Wrap(
+                    spacing: 12,
+                    children: ['Không đá', '50%', '100%'].map((s) => ChoiceChip(
+                      label: Text(s),
+                      selected: _selectedIce == s,
+                      onSelected: (_) => setState(() => _selectedIce = s),
+                    )).toList(),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  _sectionTitle('Topping (+5k)'),
+                  Wrap(
+                    spacing: 12,
+                    children: ['Trân châu', 'Thạch vải', 'Kem Cheese'].map((t) => FilterChip(
+                      label: Text(t),
+                      selected: _selectedToppings.contains(t),
+                      onSelected: (_) => _toggleTopping(t),
+                    )).toList(),
+                  ),
+                  
+                  const SizedBox(height: 100),
+                ],
               ),
             ),
-            FilledButton(
-              onPressed: widget.cart.items.isEmpty ? null : () {},
-              child: const Text('Đặt hàng'),
+          ),
+        ],
+      ),
+      bottomSheet: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+        ),
+        child: Row(
+          children: [
+            Text(
+              formatPriceVnd(totalPrice),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0E9F6E)),
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: () {
+                widget.onAddToCart(
+                  widget.item,
+                  FoodCustomization(
+                    size: _selectedSize,
+                    sugar: _selectedSugar,
+                    ice: _selectedIce,
+                    toppings: _selectedToppings,
+                  ),
+                );
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0E9F6E),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('THÊM VÀO GIỎ'),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _sectionTitle(String title) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Text(
+      title,
+      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+    ),
+  );
+}
+
+class CartPage extends StatelessWidget {
+  final CartController cart;
+  final Function(int) onRemoveAt;
+  const CartPage({super.key, required this.cart, required this.onRemoveAt});
+  @override
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Giỏ hàng')));
 }

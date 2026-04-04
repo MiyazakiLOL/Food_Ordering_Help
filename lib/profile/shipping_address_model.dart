@@ -1,31 +1,43 @@
 class ShippingAddress {
   final String id;
-  final String address;
-  final String phone;
+  final String userId;
+  final String fullAddress;
+  final String phoneNumber;
   final String note;
+  final bool isDefault;
   final DateTime? createdAt;
 
   const ShippingAddress({
     required this.id,
-    required this.address,
-    required this.phone,
+    required this.userId,
+    required this.fullAddress,
+    required this.phoneNumber,
     required this.note,
+    required this.isDefault,
     this.createdAt,
   });
 
   factory ShippingAddress.fromJson(Map<String, dynamic> json) {
-    final createdAtRaw = json['created_at'];
-    DateTime? createdAt;
-    if (createdAtRaw is String) {
-      createdAt = DateTime.tryParse(createdAtRaw);
-    }
-
     return ShippingAddress(
-      id: (json['id'] ?? '').toString(),
-      address: (json['address'] ?? '').toString(),
-      phone: (json['phone'] ?? '').toString(),
+      id: json['id'].toString(),
+      userId: json['user_id'].toString(),
+      fullAddress: (json['full_address'] ?? '').toString(),
+      phoneNumber: (json['phone_number'] ?? '').toString(),
       note: (json['note'] ?? '').toString(),
-      createdAt: createdAt,
+      isDefault: json['is_default'] ?? false,
+      createdAt: json['created_at'] != null 
+          ? DateTime.tryParse(json['created_at'].toString()) 
+          : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'full_address': fullAddress,
+      'phone_number': phoneNumber,
+      'note': note,
+      'is_default': isDefault,
+      'user_id': userId,
+    };
   }
 }

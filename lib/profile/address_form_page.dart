@@ -19,48 +19,16 @@ class _AddressFormPageState extends State<AddressFormPage> {
   late final TextEditingController _addressController;
   late final TextEditingController _phoneController;
   late final TextEditingController _noteController;
-
+  bool _isDefault = false;
   bool _loading = false;
-
-  String _friendlySaveError(Object error) {
-    if (error is AuthException) {
-      return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
-    }
-
-    if (error is PostgrestException) {
-      final code = (error.code ?? '').toString();
-      final message = error.message.toString().toLowerCase();
-      final details = (error.details ?? '').toString().toLowerCase();
-      final combined = '$message $details';
-
-      if (code == 'PGRST205' || combined.contains('could not find the table')) {
-        return 'Chưa tạo bảng địa chỉ trên Supabase (shipping_addresses).';
-      }
-
-      if (combined.contains('row-level security') || combined.contains('rls')) {
-        return 'Bị chặn quyền truy cập (RLS). Hãy tạo policy cho bảng địa chỉ.';
-      }
-
-      if (combined.contains('permission denied')) {
-        return 'Không đủ quyền để lưu địa chỉ. Hãy kiểm tra policy/quyền DB.';
-      }
-
-      if (combined.contains('column') && combined.contains('does not exist')) {
-        return 'Cấu trúc bảng địa chỉ chưa đúng (thiếu/sai tên cột).';
-      }
-
-      return 'Không thể lưu địa chỉ. Hãy kiểm tra cấu hình Supabase.';
-    }
-
-    return 'Lưu địa chỉ thất bại';
-  }
 
   @override
   void initState() {
     super.initState();
-    _addressController = TextEditingController(text: widget.initial?.address);
-    _phoneController = TextEditingController(text: widget.initial?.phone);
+    _addressController = TextEditingController(text: widget.initial?.fullAddress);
+    _phoneController = TextEditingController(text: widget.initial?.phoneNumber);
     _noteController = TextEditingController(text: widget.initial?.note);
+    _isDefault = widget.initial?.isDefault ?? false;
   }
 
   @override
@@ -86,24 +54,27 @@ class _AddressFormPageState extends State<AddressFormPage> {
     setState(() => _loading = true);
     try {
       final saved = widget.initial == null
-          ? await _repo.create(address: address, phone: phone, note: note)
+          ? await _repo.create(
+              fullAddress: address,
+              phoneNumber: phone,
+              note: note,
+              isDefault: _isDefault,
+            )
           : await _repo.update(
               id: widget.initial!.id,
-              address: address,
-              phone: phone,
+              fullAddress: address,
+              phoneNumber: phone,
               note: note,
+              isDefault: _isDefault,
             );
 
       if (!mounted) return;
       Navigator.of(context).pop(saved);
-    } catch (e, st) {
+    } catch (e) {
       if (!mounted) return;
-      debugPrint('Save address failed: $e');
-      debugPrintStack(stackTrace: st);
-      final message = _friendlySaveError(e);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi khi lưu địa chỉ: $e')),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -121,47 +92,55 @@ class _AddressFormPageState extends State<AddressFormPage> {
           children: [
             TextField(
               controller: _addressController,
-              textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
-                labelText: 'Địa chỉ (phòng trọ, toà, ...)',
+                labelText: 'Địa chỉ chi tiết',
                 border: OutlineInputBorder(),
-              ),
-              minLines: 2,
-              maxLines: 4,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Số điện thoại',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _noteController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Lời nhắn (tuỳ chọn)',
-                hintText: 'Ví dụ: Đến cổng KTX gọi mình xuống lấy',
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.location_on_outlined),
               ),
               minLines: 2,
               maxLines: 4,
             ),
             const SizedBox(height: 16),
+            TextField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Số điện thoại nhận hàng',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.phone_android_outlined),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(
+                labelText: 'Ghi chú cho shipper',
+                hintText: 'Ví dụ: Để ở bảo vệ, gọi trước khi đến...',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.note_alt_outlined),
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Đặt làm địa chỉ mặc định'),
+              value: _isDefault,
+              activeColor: const Color(0xFF0E9F6E),
+              onChanged: (val) => setState(() => _isDefault = val),
+            ),
+            const SizedBox(height: 24),
             SizedBox(
-              height: 48,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _loading ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0E9F6E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
                 child: _loading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Lưu'),
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('LƯU ĐỊA CHỈ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],

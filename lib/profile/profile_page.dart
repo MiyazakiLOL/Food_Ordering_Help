@@ -47,6 +47,10 @@ class _ProfilePageState extends State<ProfilePage> {
     return user?.email?.split('@').first ?? '';
   }
 
+  String _phoneNumber(User? user) {
+    return (user?.userMetadata?['phone_number'] ?? 'Chưa cập nhật').toString();
+  }
+
   String _initials(String name) {
     final parts = name
         .trim()
@@ -73,6 +77,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     final name = _displayName(user);
+    final phone = _phoneNumber(user);
     final initials = _initials(name);
 
     final sectionShape = RoundedRectangleBorder(
@@ -84,7 +89,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Hồ sơ cá nhân'),
         actions: [
           IconButton(
             tooltip: 'Đăng xuất',
@@ -118,17 +123,18 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: Row(
                                 children: [
                                   CircleAvatar(
-                                    radius: 26,
+                                    radius: 35,
                                     backgroundColor: colorScheme.primary,
                                     foregroundColor: colorScheme.onPrimary,
                                     child: Text(
                                       initials,
                                       style: const TextStyle(
+                                        fontSize: 24,
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -139,19 +145,41 @@ class _ProfilePageState extends State<ProfilePage> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
-                                            fontSize: 16,
+                                            fontSize: 20,
                                             fontWeight: FontWeight.w900,
                                           ),
                                         ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.email_outlined, size: 14),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                user?.email ?? '',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: colorScheme.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                         const SizedBox(height: 2),
-                                        Text(
-                                          user?.email ?? '',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.phone_android_outlined, size: 14),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              phone,
+                                              style: TextStyle(
+                                                color: colorScheme.onSurfaceVariant,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -160,7 +188,11 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 20),
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8, bottom: 8),
+                            child: Text("Cài đặt", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                          ),
                           Card(
                             elevation: 0,
                             color: colorScheme.surface,
@@ -169,10 +201,10 @@ class _ProfilePageState extends State<ProfilePage> {
                               onTap: _openAccount,
                               leading: const Icon(Icons.badge_outlined),
                               title: const Text(
-                                'Tài khoản',
+                                'Thông tin cá nhân',
                                 style: TextStyle(fontWeight: FontWeight.w900),
                               ),
-                              subtitle: const Text('Cập nhật tên hiển thị'),
+                              subtitle: const Text('Cập nhật tên và ảnh đại diện'),
                               trailing: const Icon(Icons.chevron_right),
                             ),
                           ),

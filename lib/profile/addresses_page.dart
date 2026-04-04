@@ -174,9 +174,12 @@ class _AddressesPageState extends State<AddressesPage> {
                                 color: colorScheme.surface,
                                 child: ListTile(
                                   onTap: () => _edit(a),
-                                  leading: const Icon(Icons.home_outlined),
+                                  leading: Icon(
+                                    Icons.home_outlined,
+                                    color: a.isDefault ? Colors.green : null,
+                                  ),
                                   title: Text(
-                                    a.address,
+                                    a.fullAddress, // Đã sửa từ a.address
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -185,11 +188,12 @@ class _AddressesPageState extends State<AddressesPage> {
                                   ),
                                   subtitle: Text(
                                     [
-                                      a.phone,
+                                      a.phoneNumber, // Đã sửa từ a.phone
                                       if (a.note.trim().isNotEmpty) a.note,
+                                      if (a.isDefault) 'Mặc định',
                                     ].join('\n'),
                                   ),
-                                  isThreeLine: a.note.trim().isNotEmpty,
+                                  isThreeLine: true,
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
