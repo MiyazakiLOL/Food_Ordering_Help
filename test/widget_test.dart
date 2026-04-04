@@ -7,15 +7,29 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:dat_do_an/main.dart';
 
 void main() {
-  testWidgets('Home screen renders', (WidgetTester tester) async {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+
+    SharedPreferences.setMockInitialValues({});
+
+    await Supabase.initialize(
+      url: 'https://jibbotejwrsknrixwcpj.supabase.co',
+      anonKey: 'sb_publishable_z4QPDgf9Q3nq_kqnWj4bTQ_2i0JORHW',
+    );
+  });
+
+  testWidgets('Shows login screen when signed out', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
     await tester.pump();
 
-    expect(find.text('Chọn món ngon hôm nay'), findsOneWidget);
-    expect(find.byIcon(Icons.shopping_cart_outlined), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'Đăng nhập'), findsOneWidget);
   });
 }
