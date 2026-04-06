@@ -27,6 +27,13 @@ class StoreModel {
     }
     return url;
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'image_url': imageUrl,
+    'rating': rating,
+  };
 }
 
 class MenuItemModel {
@@ -53,7 +60,6 @@ class MenuItemModel {
   });
 
   factory MenuItemModel.fromMap(Map<String, dynamic> map) {
-    // Lấy tên category từ dữ liệu JOIN
     final categoryData = map['Categories'];
     String catName = 'Món ăn';
     if (categoryData != null && categoryData['name'] != null) {
@@ -74,6 +80,18 @@ class MenuItemModel {
       categoryName: catName,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'category_id': categoryId,
+    'store_id': storeId,
+    'name': name,
+    'description': description,
+    'image_url': imageUrl,
+    'price': price,
+    'is_available': isAvailable,
+    'Categories': {'name': categoryName},
+  };
 
   double get originalPrice => price;
   int get discountPercent => 0;
@@ -110,6 +128,20 @@ class FoodCustomization {
     final toppingsText = toppings.isEmpty ? 'Không thêm' : toppings.join(', ');
     return 'Size $size | Đường: $sugar | Đá: $ice | Topping: $toppingsText';
   }
+
+  Map<String, dynamic> toJson() => {
+    'size': size,
+    'sugar': sugar,
+    'ice': ice,
+    'toppings': toppings,
+  };
+
+  factory FoodCustomization.fromJson(Map<String, dynamic> json) => FoodCustomization(
+    size: json['size'],
+    sugar: json['sugar'],
+    ice: json['ice'],
+    toppings: List<String>.from(json['toppings']),
+  );
 }
 
 class CartItemModel {
@@ -125,4 +157,16 @@ class CartItemModel {
 
   double get unitPrice => item.price + customization.extraPrice;
   double get totalPrice => unitPrice * quantity;
+
+  Map<String, dynamic> toJson() => {
+    'item': item.toJson(),
+    'customization': customization.toJson(),
+    'quantity': quantity,
+  };
+
+  factory CartItemModel.fromJson(Map<String, dynamic> json) => CartItemModel(
+    item: MenuItemModel.fromMap(json['item']),
+    customization: FoodCustomization.fromJson(json['customization']),
+    quantity: json['quantity'],
+  );
 }

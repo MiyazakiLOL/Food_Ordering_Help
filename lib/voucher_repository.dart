@@ -7,53 +7,61 @@ class VoucherRepository {
   /// Tìm và lấy thông tin voucher theo mã
   Future<VoucherModel?> getVoucherByCode(String code) async {
     try {
-      print('🔍 Searching for voucher: $code');
+      final cleanCode = code.trim().toUpperCase();
+      print('🔍 Đang tìm voucher: "$cleanCode"');
 
-      final allVouchers = await _supabase.from('Vouchers').select();
+      // Lấy voucher theo mã, chưa lọc is_active để biết chính xác lỗi
+      final response = await _supabase
+          .from('Vouchers')
+          .select()
+          .ilike('code', cleanCode)
+          .maybeSingle();
 
-      print('📋 Total vouchers in DB: ${allVouchers.length}');
-
-      final matchingVouchers = allVouchers.where((v) {
-        final dbCode = (v['code'] ?? '').toString().toUpperCase().trim();
-        final searchCode = code.toUpperCase().trim();
-        return dbCode == searchCode;
-      }).toList();
-
-      if (matchingVouchers.isEmpty) {
-        print('❌ Voucher not found');
+      if (response == null) {
+        print('❌ Không tìm thấy mã voucher này trong hệ thống');
         return null;
       }
 
-      final voucher = VoucherModel.fromMap(matchingVouchers[0]);
-      print('✅ Voucher found: ${voucher.code}, valid: ${voucher.isValid}');
+      final voucher = VoucherModel.fromMap(response);
+      
+      // Kiểm tra các điều kiện và log ra để debug
+      if (!voucher.isActive) {
+        print('❌ Voucher "${voucher.code}" đang bị khóa (is_active = false)');
+        return null;
+      }
 
-      return voucher.isValid ? voucher : null;
+      if (!voucher.isValid) {
+        print('❌ Voucher "${voucher.code}" đã hết hạn (Hạn: ${voucher.expirationDate})');
+        return null;
+      }
+
+      print('✅ Voucher hợp lệ: ${voucher.code}');
+      return voucher;
     } catch (e) {
-      print('❌ Error fetching voucher: $e');
+      print('❌ Lỗi hệ thống khi tìm voucher: $e');
       return null;
     }
   }
 
-  /// Lấy tất cả voucher hợp lệ
+  /// Lấy tất cả voucher đang hoạt động và còn hạn
   Future<List<VoucherModel>> getAllValidVouchers() async {
     try {
+      // Lấy toàn bộ để đảm bảo không bị lỗi format ngày tháng khi query
       final response = await _supabase.from('Vouchers').select();
 
-      if (response.isEmpty) return [];
+      if (response == null) return [];
 
-      final vouchers = (response as List)
-          .map((v) => VoucherModel.fromMap(v))
-          .where((v) => v.isValid)
-          .toList();
-
-      return vouchers;
+      final list = (response as List).map((v) => VoucherModel.fromMap(v)).toList();
+      
+      // Lọc tại App để đảm bảo tính chính xác của DateTime
+      return list.where((v) => v.isValid).toList();
     } catch (e) {
       print('Error fetching vouchers: $e');
       return [];
     }
   }
 
-  /// Gợi ý voucher tốt nhất dựa trên giỏ hàng
+  /// Gợi ý voucher tốt nhất dựa trên giá trị đơn hàng
   Future<VoucherModel?> suggestBestVoucher(double subtotal) async {
     final vouchers = await getAllValidVouchers();
 
@@ -63,11 +71,8 @@ class VoucherRepository {
 
     if (applicable.isEmpty) return null;
 
-    applicable.sort((a, b) {
-      final discountA = a.calculateDiscount(subtotal);
-      final discountB = b.calculateDiscount(subtotal);
-      return discountB.compareTo(discountA);
-    });
+    // Sắp xếp voucher có số tiền giảm cao nhất lên đầu
+    applicable.sort((a, b) => b.discountAmount.compareTo(a.discountAmount));
 
     return applicable.first;
   }

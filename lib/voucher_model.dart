@@ -1,11 +1,11 @@
 class VoucherModel {
   final String id;
   final String code;
-  final num discountAmount; // Số tiền giảm cố định
+  final double discountAmount; 
   final DateTime expirationDate;
-  final num minOrderValue; // Số tiền tối thiểu để dùng voucher
+  final double minOrderValue; 
   final bool isActive;
-  final DateTime createdAt;
+  final DateTime? createdAt;
 
   const VoucherModel({
     required this.id,
@@ -14,7 +14,7 @@ class VoucherModel {
     required this.expirationDate,
     required this.minOrderValue,
     required this.isActive,
-    required this.createdAt,
+    this.createdAt,
   });
 
   bool get isValid {
@@ -25,16 +25,16 @@ class VoucherModel {
   factory VoucherModel.fromMap(Map<String, dynamic> map) {
     return VoucherModel(
       id: map['id'].toString(),
-      code: map['code'].toString().toUpperCase(),
+      code: map['code'].toString().toUpperCase().trim(),
       discountAmount: (map['discount_amount'] ?? 0).toDouble(),
       expirationDate: DateTime.parse(map['expiration_date'].toString()),
       minOrderValue: (map['min_order_value'] ?? 0).toDouble(),
       isActive: map['is_active'] ?? false,
-      createdAt: DateTime.parse(map['created_at'].toString()),
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : null,
     );
   }
 
-  num calculateDiscount(num subtotal) {
+  double calculateDiscount(double subtotal) {
     if (!isValid || subtotal < minOrderValue) return 0;
     return discountAmount;
   }
@@ -43,16 +43,13 @@ class VoucherModel {
     return 'Giảm ${_formatPriceVnd(discountAmount)}';
   }
 
-  /// Tính ngày còn lại
   int get daysLeft {
     final now = DateTime.now();
     return expirationDate.difference(now).inDays;
   }
 
-  /// Check xem có sắp hết hạn không (< 7 ngày)
   bool get isExpiringSoon => daysLeft < 7 && daysLeft >= 0;
 
-  /// Format thời gian hết hạn
   String get expirationText {
     if (daysLeft < 0) return 'Đã hết hạn';
     if (daysLeft == 0) return 'Hôm nay hết';
@@ -61,7 +58,6 @@ class VoucherModel {
   }
 }
 
-/// Helper function format tiền VND
 String _formatPriceVnd(num value) {
   final raw = value.round().toString();
   final buffer = StringBuffer();
