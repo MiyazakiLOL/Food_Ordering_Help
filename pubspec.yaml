@@ -12,11 +12,11 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.6.0 # Thêm dòng này
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  shared_preferences: ^2.3.2
   flutter_lints: ^6.0.0
 
 flutter:
