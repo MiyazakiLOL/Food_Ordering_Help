@@ -16,37 +16,43 @@ class AddressFormPage extends StatefulWidget {
 class _AddressFormPageState extends State<AddressFormPage> {
   final _repo = ShippingAddressRepository();
 
+  late final TextEditingController _recipientController;
   late final TextEditingController _addressController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _noteController;
   bool _isDefault = false;
   bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    _addressController = TextEditingController(text: widget.initial?.fullAddress);
+    _recipientController = TextEditingController(
+      text: widget.initial?.recipientName,
+    );
+    _addressController = TextEditingController(
+      text: widget.initial?.fullAddress,
+    );
     _phoneController = TextEditingController(text: widget.initial?.phoneNumber);
-    _noteController = TextEditingController(text: widget.initial?.note);
     _isDefault = widget.initial?.isDefault ?? false;
   }
 
   @override
   void dispose() {
+    _recipientController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
-    _noteController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
+    final recipientName = _recipientController.text.trim();
     final address = _addressController.text.trim();
     final phone = _phoneController.text.trim();
-    final note = _noteController.text.trim();
 
-    if (address.isEmpty || phone.isEmpty) {
+    if (recipientName.isEmpty || address.isEmpty || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập địa chỉ và số điện thoại')),
+        const SnackBar(
+          content: Text('Vui lòng nhập người nhận, địa chỉ và số điện thoại'),
+        ),
       );
       return;
     }
@@ -55,16 +61,16 @@ class _AddressFormPageState extends State<AddressFormPage> {
     try {
       final saved = widget.initial == null
           ? await _repo.create(
+              recipientName: recipientName,
               fullAddress: address,
               phoneNumber: phone,
-              note: note,
               isDefault: _isDefault,
             )
           : await _repo.update(
               id: widget.initial!.id,
+              recipientName: recipientName,
               fullAddress: address,
               phoneNumber: phone,
-              note: note,
               isDefault: _isDefault,
             );
 
@@ -72,9 +78,9 @@ class _AddressFormPageState extends State<AddressFormPage> {
       Navigator.of(context).pop(saved);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi lưu địa chỉ: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi khi lưu địa chỉ: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -90,6 +96,16 @@ class _AddressFormPageState extends State<AddressFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            TextField(
+              controller: _recipientController,
+              decoration: const InputDecoration(
+                labelText: 'Người nhận',
+                hintText: 'Họ tên người nhận hàng',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _addressController,
               decoration: const InputDecoration(
@@ -111,17 +127,6 @@ class _AddressFormPageState extends State<AddressFormPage> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _noteController,
-              decoration: const InputDecoration(
-                labelText: 'Ghi chú cho shipper',
-                hintText: 'Ví dụ: Để ở bảo vệ, gọi trước khi đến...',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.note_alt_outlined),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Đặt làm địa chỉ mặc định'),
               value: _isDefault,
@@ -136,11 +141,19 @@ class _AddressFormPageState extends State<AddressFormPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0E9F6E),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: _loading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('LƯU ĐỊA CHỈ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    : const Text(
+                        'LƯU ĐỊA CHỈ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
               ),
             ),
           ],

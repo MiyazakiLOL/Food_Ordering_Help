@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:postgrest/postgrest.dart';
 import 'shipping_address_model.dart';
 
 class ShippingAddressRepository {
@@ -30,54 +31,90 @@ class ShippingAddressRepository {
   }
 
   Future<ShippingAddress> create({
+    required String recipientName,
     required String fullAddress,
     required String phoneNumber,
-    required String note,
     bool isDefault = false,
   }) async {
-    final row = await _client
-        .from(_tableName)
-        .insert({
-          'user_id': _userId,
-          'full_address': fullAddress,
-          'phone_number': phoneNumber,
-          'note': note,
-          'is_default': isDefault,
-        })
-        .select()
-        .single();
+    try {
+      final row = await _client
+          .from(_tableName)
+          .insert({
+            'user_id': _userId,
+            'recipient_name': recipientName,
+            'full_address': fullAddress,
+            'phone_number': phoneNumber,
+            'is_default': isDefault,
+          })
+          .select()
+          .single();
 
-    return ShippingAddress.fromJson(row as Map<String, dynamic>);
+      return ShippingAddress.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      // Backward-compat: older schema used `note` instead of `recipient_name`.
+      final msg = e.message.toLowerCase();
+      if (!msg.contains('recipient_name') && !msg.contains('column')) rethrow;
+
+      final row = await _client
+          .from(_tableName)
+          .insert({
+            'user_id': _userId,
+            'note': recipientName,
+            'full_address': fullAddress,
+            'phone_number': phoneNumber,
+            'is_default': isDefault,
+          })
+          .select()
+          .single();
+
+      return ShippingAddress.fromJson(row as Map<String, dynamic>);
+    }
   }
 
   Future<ShippingAddress> update({
     required String id,
+    required String recipientName,
     required String fullAddress,
     required String phoneNumber,
-    required String note,
     bool isDefault = false,
   }) async {
-    final row = await _client
-        .from(_tableName)
-        .update({
-          'full_address': fullAddress,
-          'phone_number': phoneNumber,
-          'note': note,
-          'is_default': isDefault,
-        })
-        .eq('id', id)
-        .eq('user_id', _userId)
-        .select()
-        .single();
+    try {
+      final row = await _client
+          .from(_tableName)
+          .update({
+            'recipient_name': recipientName,
+            'full_address': fullAddress,
+            'phone_number': phoneNumber,
+            'is_default': isDefault,
+          })
+          .eq('id', id)
+          .eq('user_id', _userId)
+          .select()
+          .single();
 
-    return ShippingAddress.fromJson(row as Map<String, dynamic>);
+      return ShippingAddress.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (!msg.contains('recipient_name') && !msg.contains('column')) rethrow;
+
+      final row = await _client
+          .from(_tableName)
+          .update({
+            'note': recipientName,
+            'full_address': fullAddress,
+            'phone_number': phoneNumber,
+            'is_default': isDefault,
+          })
+          .eq('id', id)
+          .eq('user_id', _userId)
+          .select()
+          .single();
+
+      return ShippingAddress.fromJson(row as Map<String, dynamic>);
+    }
   }
 
   Future<void> delete(String id) async {
-    await _client
-        .from(_tableName)
-        .delete()
-        .eq('id', id)
-        .eq('user_id', _userId);
+    await _client.from(_tableName).delete().eq('id', id).eq('user_id', _userId);
   }
 }
