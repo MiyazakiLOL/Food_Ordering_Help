@@ -188,8 +188,9 @@ class _AddressesPageState extends State<AddressesPage> {
                                   ),
                                   subtitle: Text(
                                     [
+                                      if (a.recipientName.trim().isNotEmpty)
+                                        a.recipientName,
                                       a.phoneNumber, // Đã sửa từ a.phone
-                                      if (a.note.trim().isNotEmpty) a.note,
                                       if (a.isDefault) 'Mặc định',
                                     ].join('\n'),
                                   ),
