@@ -172,14 +172,23 @@ class _AddressesPageState extends State<AddressesPage> {
                               child: Card(
                                 elevation: 0,
                                 color: colorScheme.surface,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                  ),
+                                ),
                                 child: ListTile(
-                                  onTap: () => _edit(a),
+                                  onTap: () {
+                                    // Thay vì gọi _edit(a), chúng ta trả về địa chỉ này
+                                    Navigator.of(context).pop(a);
+                                  },
                                   leading: Icon(
                                     Icons.home_outlined,
                                     color: a.isDefault ? Colors.green : null,
                                   ),
                                   title: Text(
-                                    a.fullAddress, // Đã sửa từ a.address
+                                    a.fullAddress,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -190,23 +199,22 @@ class _AddressesPageState extends State<AddressesPage> {
                                     [
                                       if (a.recipientName.trim().isNotEmpty)
                                         a.recipientName,
-                                      a.phoneNumber, // Đã sửa từ a.phone
+                                      a.phoneNumber,
                                       if (a.isDefault) 'Mặc định',
-                                    ].join('\n'),
+                                    ].join(' - '),
                                   ),
-                                  isThreeLine: true,
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
                                         tooltip: 'Sửa',
                                         onPressed: () => _edit(a),
-                                        icon: const Icon(Icons.edit_outlined),
+                                        icon: const Icon(Icons.edit_outlined, size: 20),
                                       ),
                                       IconButton(
                                         tooltip: 'Xoá',
                                         onPressed: () => _delete(a),
-                                        icon: const Icon(Icons.delete_outline),
+                                        icon: const Icon(Icons.delete_outline, size: 20),
                                       ),
                                     ],
                                   ),

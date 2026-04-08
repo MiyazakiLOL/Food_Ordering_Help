@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'order_model.dart';
 import 'order_repository.dart';
 import 'main.dart'; // For formatPriceVnd
@@ -16,7 +15,6 @@ class OrderDetailPage extends StatefulWidget {
 
 class _OrderDetailPageState extends State<OrderDetailPage> {
   final OrderRepository _repo = OrderRepository();
-  final _supabase = Supabase.instance.client;
   OrderModel? _initialOrder;
 
   @override
@@ -41,28 +39,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   Future<void> _onRefresh() async {
     await _loadOrder();
     await Future.delayed(const Duration(milliseconds: 500));
-  }
-
-  Future<void> _updateStatus(String status) async {
-    try {
-      final dynamic orderIdInt = int.tryParse(widget.orderId) ?? widget.orderId;
-
-      await _supabase
-          .from('Orders')
-          .update({'status': status})
-          .eq('id', orderIdInt);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${AppStrings.statusUpdated}$status'), 
-          duration: const Duration(seconds: 1),
-        ),
-      );
-      
-      _loadOrder();
-    } catch (e) {
-      print('${AppStrings.updateError}$e');
-    }
   }
 
   @override
@@ -115,64 +91,35 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   Widget _buildMainContent(OrderModel order, OrderStatus currentStatus) {
     final bool isCancelled = currentStatus == OrderStatus.cancelled;
 
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(25.0),
-            child: Column(
-              children: [
-                _buildStep(AppStrings.statusPending, true),
-                _buildLine(currentStatus != OrderStatus.pending && !isCancelled),
-                _buildStep(AppStrings.statusBuying, (currentStatus == OrderStatus.buying || currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
-                _buildLine((currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
-                _buildStep(AppStrings.statusDelivering, (currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
-                _buildLine(currentStatus == OrderStatus.completed && !isCancelled),
-                _buildStep(AppStrings.statusCompleted, currentStatus == OrderStatus.completed && !isCancelled),
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(25.0),
+      child: Column(
+        children: [
+          _buildStep(AppStrings.statusPending, true),
+          _buildLine(currentStatus != OrderStatus.pending && !isCancelled),
+          _buildStep(AppStrings.statusBuying, (currentStatus == OrderStatus.buying || currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
+          _buildLine((currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
+          _buildStep(AppStrings.statusDelivering, (currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
+          _buildLine(currentStatus == OrderStatus.completed && !isCancelled),
+          _buildStep(AppStrings.statusCompleted, currentStatus == OrderStatus.completed && !isCancelled),
 
-                if (isCancelled)
-                  Container(
-                    margin: const EdgeInsets.only(top: 20),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(10)),
-                    child: const Text(AppStrings.orderCancelled, style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                  ),
-                
-                if (currentStatus == OrderStatus.completed) _buildInvoice(order),
-                
-                const SizedBox(height: 30),
-                const Divider(),
-                _buildOrderDetails(order),
-              ],
+          if (isCancelled)
+            Container(
+              margin: const EdgeInsets.only(top: 20),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(10)),
+              child: const Text(AppStrings.orderCancelled, style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
             ),
-          ),
-        ),
-        
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-          ),
-          child: Column(
-            children: [
-              const Text(AppStrings.demoPanelTitle, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _demoButton(AppStrings.demoPending, "pending", Colors.orange),
-                  _demoButton(AppStrings.demoBuying, "buying", Colors.blue),
-                  _demoButton(AppStrings.demoShip, "delivering", Colors.purple),
-                  _demoButton(AppStrings.demoDone, "completed", Colors.green),
-                ],
-              ),
-            ],
-          ),
-        )
-      ],
+          
+          if (currentStatus == OrderStatus.completed) _buildInvoice(order),
+          
+          const SizedBox(height: 30),
+          const Divider(),
+          _buildOrderDetails(order),
+          const SizedBox(height: 50),
+        ],
+      ),
     );
   }
 
@@ -201,19 +148,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _demoButton(String label, String status, Color color) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      onPressed: () => _updateStatus(status),
-      child: Text(label, style: const TextStyle(fontSize: 12)),
     );
   }
 

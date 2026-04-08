@@ -291,7 +291,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
+                      color: Colors.black.withOpacity(0.1),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -552,7 +552,7 @@ class _StoreCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -638,7 +638,7 @@ class _FoodCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withOpacity(0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1133,50 +1133,6 @@ class _CartPageState extends State<CartPage> {
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: InkWell(
-                            onTap: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const AddressesPage()),
-                              );
-                              _loadDefaultAddress();
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.location_on, color: Color(0xFF0E9F6E)),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          AppStrings.shippingAddress,
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                        ),
-                                        Text(
-                                          _selectedAddress?.fullAddress ?? AppStrings.noAddressSelected,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(Icons.chevron_right, size: 20),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
                         ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -1226,6 +1182,61 @@ class _CartPageState extends State<CartPage> {
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                        // Shipping Address Section
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: InkWell(
+                            onTap: () async {
+                              final selected = await Navigator.push<ShippingAddress>(
+                                context,
+                                MaterialPageRoute(builder: (_) => const AddressesPage()),
+                              );
+                              if (selected != null) {
+                                setState(() {
+                                  _selectedAddress = selected;
+                                });
+                              }
+                              // Đã sửa: Không tự động gọi _loadDefaultAddress() khi nhấn nút Back (selected == null)
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.location_on, color: Color(0xFF0E9F6E)),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          AppStrings.shippingAddress,
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        ),
+                                        Text(
+                                          _selectedAddress?.fullAddress ?? AppStrings.noAddressSelected,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontWeight: FontWeight.w500),
+                                        ),
+                                        if (_selectedAddress != null)
+                                          Text(
+                                            '${_selectedAddress!.recipientName} • ${_selectedAddress!.phoneNumber}',
+                                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(Icons.chevron_right, size: 20),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                         Padding(
