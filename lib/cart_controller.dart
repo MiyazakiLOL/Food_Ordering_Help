@@ -86,6 +86,17 @@ class CartController {
     saveCart();
   }
 
+  void updateItem(int index, FoodCustomization newCustomization) {
+    if (index >= 0 && index < _items.length) {
+      _items[index] = CartItemModel(
+        item: _items[index].item,
+        customization: newCustomization,
+        quantity: _items[index].quantity,
+      );
+      saveCart();
+    }
+  }
+
   void setOrderNote(String note) {
     _orderNote = note;
     saveCart();
