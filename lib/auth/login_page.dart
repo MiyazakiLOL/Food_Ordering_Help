@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'register_page.dart';
+import 'reset_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +17,110 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _loading = false;
   bool _showPassword = false;
+
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        bool sending = false;
+
+        return StatefulBuilder(
+          builder: (dialogContext, setState) {
+            Future<void> send() async {
+              final email = emailController.text.trim();
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(dialogContext);
+
+              if (email.isEmpty || !email.contains('@')) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Vui lòng nhập email hợp lệ')),
+                );
+                return;
+              }
+
+              setState(() => sending = true);
+              try {
+                await Supabase.instance.client.auth.signInWithOtp(
+                  email: email,
+                  shouldCreateUser: false,
+                );
+                if (!mounted) return;
+
+                FocusManager.instance.primaryFocus?.unfocus();
+                if (dialogContext.mounted) {
+                  navigator.pop();
+                }
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Đã gửi mã OTP về email. Vui lòng nhập OTP để đặt lại mật khẩu.',
+                    ),
+                  ),
+                );
+
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ResetPasswordPage(initialEmail: email),
+                  ),
+                );
+              } on AuthException catch (e) {
+                if (!mounted) return;
+                messenger.showSnackBar(SnackBar(content: Text(e.message)));
+              } catch (e) {
+                if (!mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Gửi yêu cầu thất bại: $e')),
+                );
+              } finally {
+                if (dialogContext.mounted) {
+                  setState(() => sending = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Quên mật khẩu'),
+              content: TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+                onSubmitted: (_) => sending ? null : send(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: sending
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton(
+                  onPressed: sending ? null : send,
+                  child: sending
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Gửi'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    emailController.dispose();
+  }
 
   @override
   void dispose() {
@@ -185,6 +290,15 @@ class _LoginPageState extends State<LoginPage> {
                                             : Icons.visibility_outlined,
                                       ),
                                     ),
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _loading
+                                        ? null
+                                        : _showForgotPasswordDialog,
+                                    child: const Text('Quên mật khẩu?'),
                                   ),
                                 ),
                                 const SizedBox(height: 16),
