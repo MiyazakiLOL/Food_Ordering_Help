@@ -57,7 +57,7 @@ class OrderModel {
   String get statusText {
     switch (status) {
       case OrderStatus.pending: return 'Chờ xác nhận';
-      case OrderStatus.buying: return 'Đang chuẩn bị';
+      case OrderStatus.buying: return 'Đang mua';
       case OrderStatus.delivering: return 'Đang giao hàng';
       case OrderStatus.completed: return 'Đã hoàn thành';
       case OrderStatus.cancelled: return 'Đã hủy';

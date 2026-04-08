@@ -19,97 +19,15 @@ class _LoginPageState extends State<LoginPage> {
   bool _showPassword = false;
 
   Future<void> _showForgotPasswordDialog() async {
-    final emailController = TextEditingController(
-      text: _emailController.text.trim(),
-    );
-
     final resultEmail = await showDialog<String>(
       context: context,
-      builder: (dialogContext) {
-        bool sending = false;
-
-        return StatefulBuilder(
-          builder: (dialogContext, setState) {
-            Future<void> send() async {
-              final email = emailController.text.trim();
-              final messenger = ScaffoldMessenger.of(context);
-              var didCloseDialog = false;
-
-              if (email.isEmpty || !email.contains('@')) {
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('Vui lòng nhập email hợp lệ')),
-                );
-                return;
-              }
-
-              setState(() => sending = true);
-              try {
-                await Supabase.instance.client.auth.signInWithOtp(
-                  email: email,
-                  shouldCreateUser: false,
-                );
-                if (!mounted) return;
-
-                FocusManager.instance.primaryFocus?.unfocus();
-                didCloseDialog = true;
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop(email);
-                }
-              } on AuthException catch (e) {
-                if (!mounted) return;
-                messenger.showSnackBar(SnackBar(content: Text(e.message)));
-              } catch (e) {
-                if (!mounted) return;
-                messenger.showSnackBar(
-                  SnackBar(content: Text('Gửi yêu cầu thất bại: $e')),
-                );
-              } finally {
-                if (!didCloseDialog && dialogContext.mounted) {
-                  setState(() => sending = false);
-                }
-              }
-            }
-
-            return AlertDialog(
-              title: const Text('Quên mật khẩu'),
-              content: TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                onSubmitted: (_) => sending ? null : send(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: sending
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Hủy'),
-                ),
-                FilledButton(
-                  onPressed: sending ? null : send,
-                  child: sending
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Gửi'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (context) => _ForgotPasswordDialog(
+        initialEmail: _emailController.text.trim(),
+      ),
     );
 
-    emailController.dispose();
-
     if (!mounted || resultEmail == null) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
@@ -350,6 +268,98 @@ class _LoginPageState extends State<LoginPage> {
           },
         ),
       ),
+    );
+  }
+}
+
+class _ForgotPasswordDialog extends StatefulWidget {
+  final String initialEmail;
+  const _ForgotPasswordDialog({required this.initialEmail});
+
+  @override
+  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+  late final TextEditingController _emailController;
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập email hợp lệ')),
+      );
+      return;
+    }
+
+    setState(() => _sending = true);
+    try {
+      await Supabase.instance.client.auth.signInWithOtp(
+        email: email,
+        shouldCreateUser: false,
+      );
+      if (mounted) Navigator.of(context).pop(email);
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gửi yêu cầu thất bại: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Quên mật khẩu'),
+      content: TextField(
+        controller: _emailController,
+        keyboardType: TextInputType.emailAddress,
+        autofillHints: const [AutofillHints.email],
+        decoration: const InputDecoration(
+          labelText: 'Email',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.email_outlined),
+        ),
+        onSubmitted: (_) => _sending ? null : _send(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _sending ? null : () => Navigator.of(context).pop(),
+          child: const Text('Hủy'),
+        ),
+        FilledButton(
+          onPressed: _sending ? null : _send,
+          child: _sending
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Gửi'),
+        ),
+      ],
     );
   }
 }

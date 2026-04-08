@@ -52,19 +52,18 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    // Vẫn giữ nguyên setState ở đây vì nó chỉ chạy 1 lần lúc khởi động
     _cart.loadCart().then((_) => setState(() {}));
   }
 
+  // SỬA Ở ĐÂY: Xóa bỏ setState
   void _addToCart(MenuItemModel item, FoodCustomization customization) {
-    setState(() {
-      _cart.addItem(item, customization);
-    });
+    _cart.addItem(item, customization);
   }
 
+  // SỬA Ở ĐÂY: Xóa bỏ setState
   void _removeFromCart(int index) {
-    setState(() {
-      _cart.removeAt(index);
-    });
+    _cart.removeAt(index);
   }
 
   @override
