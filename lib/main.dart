@@ -1192,6 +1192,10 @@ class _CartPageState extends State<CartPage> {
                                 setState(() =>
                                     widget.cart.updateQuantity(index, newQuantity));
                               },
+                              onEditCustomization: (newCustomization) {
+                                setState(() =>
+                                    widget.cart.updateItem(index, newCustomization));
+                              },
                             );
                           },
                         ),
@@ -1685,11 +1689,13 @@ class _CartItemTile extends StatelessWidget {
   final CartItemModel item;
   final VoidCallback onRemove;
   final Function(int) onQuantityChanged;
+  final Function(FoodCustomization) onEditCustomization;
 
   const _CartItemTile({
     required this.item,
     required this.onRemove,
     required this.onQuantityChanged,
+    required this.onEditCustomization,
   });
 
   @override
@@ -1706,140 +1712,349 @@ class _CartItemTile extends StatelessWidget {
         color: Colors.red,
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    item.item.imageUrl,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+      child: GestureDetector(
+        onTap: () {
+          showGeneralDialog(
+            context: context,
+            barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+            barrierColor: Colors.black.withOpacity(0.5),
+            transitionDuration: const Duration(milliseconds: 300),
+            pageBuilder: (context, animation1, animation2) {
+              return _EditCustomizationDialog(
+                item: item.item,
+                initialCustomization: item.customization,
+                onSave: (newCustomization) {
+                  onEditCustomization(newCustomization);
+                  Navigator.pop(context);
+                },
+              );
+            },
+            transitionBuilder: (context, animation1, animation2, child) {
+              return ScaleTransition(
+                scale: Tween<double>(begin: 0.5, end: 1.0).animate(
+                  CurvedAnimation(parent: animation1, curve: Curves.easeOutBack),
+                ),
+                child: FadeTransition(
+                  opacity: animation1,
+                  child: child,
+                ),
+              );
+            },
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      item.item.imageUrl,
                       width: 80,
                       height: 80,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.fastfood),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.fastfood),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.item.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.item.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        formatPriceVnd(item.unitPrice),
-                        style: const TextStyle(
-                          color: Color(0xFF0E9F6E),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  children: [
-                    IconButton(
-                      onPressed: onRemove,
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.customization.summary,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: item.quantity > 1
-                            ? () => onQuantityChanged(item.quantity - 1)
-                            : null,
-                        icon: const Icon(Icons.remove, size: 18),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
-                      ),
-                      SizedBox(
-                        width: 40,
-                        child: Center(
-                          child: Text(
-                            item.quantity.toString(),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                        const SizedBox(height: 4),
+                        Text(
+                          formatPriceVnd(item.unitPrice),
+                          style: const TextStyle(
+                            color: Color(0xFF0E9F6E),
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    children: [
                       IconButton(
-                        onPressed: () => onQuantityChanged(item.quantity + 1),
-                        icon: const Icon(Icons.add, size: 18),
+                        onPressed: onRemove,
+                        icon: const Icon(Icons.close, size: 20),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
+                        constraints: const BoxConstraints(),
                       ),
                     ],
                   ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                item.customization.summary,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
                 ),
-                Text(
-                  formatPriceVnd(item.totalPrice),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Color(0xFF0E9F6E),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: item.quantity > 1
+                              ? () => onQuantityChanged(item.quantity - 1)
+                              : null,
+                          icon: const Icon(Icons.remove, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 40,
+                          child: Center(
+                            child: Text(
+                              item.quantity.toString(),
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => onQuantityChanged(item.quantity + 1),
+                          icon: const Icon(Icons.add, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    formatPriceVnd(item.totalPrice),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Color(0xFF0E9F6E),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditCustomizationDialog extends StatefulWidget {
+  final MenuItemModel item;
+  final FoodCustomization initialCustomization;
+  final Function(FoodCustomization) onSave;
+
+  const _EditCustomizationDialog({
+    required this.item,
+    required this.initialCustomization,
+    required this.onSave,
+  });
+
+  @override
+  State<_EditCustomizationDialog> createState() => _EditCustomizationDialogState();
+}
+
+class _EditCustomizationDialogState extends State<_EditCustomizationDialog> {
+  late String _selectedSize;
+  late String _selectedSugar;
+  late String _selectedIce;
+  late List<String> _selectedToppings;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSize = widget.initialCustomization.size;
+    _selectedSugar = widget.initialCustomization.sugar;
+    _selectedIce = widget.initialCustomization.ice;
+    _selectedToppings = List.from(widget.initialCustomization.toppings);
+  }
+
+  void _toggleTopping(String topping) {
+    setState(() {
+      if (_selectedToppings.contains(topping)) {
+        _selectedToppings.remove(topping);
+      } else {
+        _selectedToppings.add(topping);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final extraPrice = _selectedSize == 'L' ? 7000 : 0;
+    final toppingsPrice = _selectedToppings.length * 5000;
+    final totalPrice = widget.item.price + extraPrice + toppingsPrice;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              children: [
+                Image.network(
+                  widget.item.imageUrl,
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 200,
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.fastfood),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black.withOpacity(0.5),
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ),
                 ),
               ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.item.name,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  _sectionTitle('Chọn Size'),
+                  Wrap(
+                    spacing: 12,
+                    children: ['S', 'M', 'L'].map((s) => ChoiceChip(
+                      label: Text('Size $s'),
+                      selected: _selectedSize == s,
+                      onSelected: (_) => setState(() => _selectedSize = s),
+                    )).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Mức đường'),
+                  Wrap(
+                    spacing: 12,
+                    children: ['0%', '30%', '50%', '70%', '100%'].map((s) => ChoiceChip(
+                      label: Text(s),
+                      selected: _selectedSugar == s,
+                      onSelected: (_) => setState(() => _selectedSugar = s),
+                    )).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Mức đá'),
+                  Wrap(
+                    spacing: 12,
+                    children: ['Không đá', '50%', '100%'].map((s) => ChoiceChip(
+                      label: Text(s),
+                      selected: _selectedIce == s,
+                      onSelected: (_) => setState(() => _selectedIce = s),
+                    )).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Topping (+5k)'),
+                  Wrap(
+                    spacing: 12,
+                    children: ['Trân châu', 'Thạch vải', 'Kem Cheese'].map((t) => FilterChip(
+                      label: Text(t),
+                      selected: _selectedToppings.contains(t),
+                      onSelected: (_) => _toggleTopping(t),
+                    )).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        formatPriceVnd(totalPrice),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0E9F6E),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          widget.onSave(
+                            FoodCustomization(
+                              size: _selectedSize,
+                              sugar: _selectedSugar,
+                              ice: _selectedIce,
+                              toppings: _selectedToppings,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0E9F6E),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('CẬP NHẬT'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _sectionTitle(String title) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Text(
+      title,
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+    ),
+  );
 }
 
 class _PricingRow extends StatelessWidget {
