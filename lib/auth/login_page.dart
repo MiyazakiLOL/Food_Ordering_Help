@@ -23,7 +23,7 @@ class _LoginPageState extends State<LoginPage> {
       text: _emailController.text.trim(),
     );
 
-    await showDialog<void>(
+    final resultEmail = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         bool sending = false;
@@ -33,7 +33,7 @@ class _LoginPageState extends State<LoginPage> {
             Future<void> send() async {
               final email = emailController.text.trim();
               final messenger = ScaffoldMessenger.of(context);
-              final navigator = Navigator.of(dialogContext);
+              var didCloseDialog = false;
 
               if (email.isEmpty || !email.contains('@')) {
                 messenger.showSnackBar(
@@ -51,22 +51,10 @@ class _LoginPageState extends State<LoginPage> {
                 if (!mounted) return;
 
                 FocusManager.instance.primaryFocus?.unfocus();
+                didCloseDialog = true;
                 if (dialogContext.mounted) {
-                  navigator.pop();
+                  Navigator.of(dialogContext).pop(email);
                 }
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Đã gửi mã OTP về email. Vui lòng nhập OTP để đặt lại mật khẩu.',
-                    ),
-                  ),
-                );
-
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ResetPasswordPage(initialEmail: email),
-                  ),
-                );
               } on AuthException catch (e) {
                 if (!mounted) return;
                 messenger.showSnackBar(SnackBar(content: Text(e.message)));
@@ -76,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
                   SnackBar(content: Text('Gửi yêu cầu thất bại: $e')),
                 );
               } finally {
-                if (dialogContext.mounted) {
+                if (!didCloseDialog && dialogContext.mounted) {
                   setState(() => sending = false);
                 }
               }
@@ -120,6 +108,20 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     emailController.dispose();
+
+    if (!mounted || resultEmail == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Đã gửi mã OTP về email. Vui lòng nhập OTP để đặt lại mật khẩu.',
+        ),
+      ),
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ResetPasswordPage(initialEmail: resultEmail),
+      ),
+    );
   }
 
   @override
@@ -219,7 +221,7 @@ class _LoginPageState extends State<LoginPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Food Ordering',
+                                'Food Ordering Help',
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Colors.white,
