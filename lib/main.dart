@@ -113,7 +113,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final MenuRepository _repository = MenuRepository();
   final ScrollController _storeScrollController = ScrollController();
-  
+  final TextEditingController _searchController = TextEditingController();
+
   static const List<String> _categories = [
     AppStrings.allCategory,
     'Trà sữa',
@@ -122,15 +123,35 @@ class _HomePageState extends State<HomePage> {
     'Thức ăn nhanh',
     'Sinh tố & Nước ép',
   ];
-  
+
   HomeData? _data;
   bool _isLoading = true;
   String? _error;
 
   String? _selectedStoreId;
   String _selectedCategory = AppStrings.allCategory;
+  String _searchQuery = '';
   int _currentPage = 0;
   final int _pageSize = 10;
+
+  List<MenuItemModel> _applySearch(
+    List<MenuItemModel> items,
+    Map<String, String> storeNameById,
+  ) {
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return items;
+
+    return items.where((item) {
+      final name = item.name.toLowerCase();
+      final description = item.description.toLowerCase();
+      final category = item.categoryName.toLowerCase();
+      final storeName = (storeNameById[item.storeId] ?? '').toLowerCase();
+      return name.contains(q) ||
+          description.contains(q) ||
+          category.contains(q) ||
+          storeName.contains(q);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -145,10 +166,10 @@ class _HomePageState extends State<HomePage> {
         _error = null;
       });
     }
-    
+
     try {
       final newData = await _repository.fetchHomeData(
-        page: _currentPage, 
+        page: _currentPage,
         pageSize: _pageSize,
         storeId: _selectedStoreId,
         category: _selectedCategory,
@@ -172,6 +193,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _storeScrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -252,8 +274,8 @@ class _HomePageState extends State<HomePage> {
       body: _isLoading && _data == null
           ? const Center(child: CircularProgressIndicator())
           : _error != null && _data == null
-              ? Center(child: Text('${AppStrings.loadDataError}: $_error'))
-              : _buildContent(),
+          ? Center(child: Text('${AppStrings.loadDataError}: $_error'))
+          : _buildContent(),
     );
   }
 
@@ -261,8 +283,12 @@ class _HomePageState extends State<HomePage> {
     if (_data == null) return const Center(child: Text(AppStrings.noData));
 
     final data = _data!;
-    final displayedItems = data.featuredItems;
-    final dealItems = data.featuredItems
+    final storeNameById = {
+      for (final store in data.stores) store.id: store.name,
+    };
+    final pagedItems = data.featuredItems;
+    final displayedItems = _applySearch(pagedItems, storeNameById);
+    final dealItems = pagedItems
         .where((item) => item.discountPercent > 0)
         .take(6)
         .toList();
@@ -278,111 +304,219 @@ class _HomePageState extends State<HomePage> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
-              // Banner Deals
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0E9F6E), Color(0xFFF59E0B)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: AppStrings.searchFoodHint,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.trim().isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                          icon: const Icon(Icons.clear),
+                        ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      AppStrings.hotDeals,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      AppStrings.dealSubtitle,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 76,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: dealItems.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (context, index) {
-                          return _DealFoodItem(item: dealItems[index]);
+                onChanged: (value) {
+                  setState(() => _searchQuery = value);
+                },
+              ),
+              const SizedBox(height: 14),
+
+              if (_searchQuery.trim().isNotEmpty) ...[
+                if (displayedItems.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: Text(AppStrings.noFoodMatch)),
+                  )
+                else
+                  ...displayedItems.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _FoodCard(
+                        item: item,
+                        onQuickAdd: () {
+                          widget.onAddToCart(
+                            item,
+                            const FoodCustomization(
+                              size: 'M',
+                              sugar: '70%',
+                              ice: '70%',
+                              toppings: [],
+                            ),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '${AppStrings.addedToCart} ${item.name}',
+                              ),
+                              duration: const Duration(milliseconds: 900),
+                            ),
+                          );
+                          setState(() {});
+                        },
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FoodDetailPage(
+                                item: item,
+                                onAddToCart: widget.onAddToCart,
+                              ),
+                            ),
+                          );
+                          setState(() {});
                         },
                       ),
                     ),
+                  ),
+                const SizedBox(height: 40),
+              ] else ...[
+                // Banner Deals
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0E9F6E), Color(0xFFF59E0B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 16,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        AppStrings.hotDeals,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        AppStrings.dealSubtitle,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 76,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: dealItems.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            return _DealFoodItem(item: dealItems[index]);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  AppStrings.featuredStores,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.swipe, size: 18, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 6),
+                    const Text(
+                      AppStrings.swipeHint,
+                      style: TextStyle(color: Color(0xFF6B7280)),
+                    ),
+                    const Spacer(),
+                    if (_selectedStoreId != null)
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedStoreId = null;
+                            _currentPage = 0;
+                          });
+                          _loadData(silent: true);
+                        },
+                        child: const Text(AppStrings.viewAll),
+                      ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                AppStrings.featuredStores,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(Icons.swipe, size: 18, color: Color(0xFF6B7280)),
-                  const SizedBox(width: 6),
-                  const Text(
-                    AppStrings.swipeHint,
-                    style: TextStyle(color: Color(0xFF6B7280)),
-                  ),
-                  const Spacer(),
-                  if (_selectedStoreId != null)
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedStoreId = null;
-                          _currentPage = 0;
-                        });
-                        _loadData(silent: true);
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 205,
+                  child: ScrollConfiguration(
+                    behavior: const MaterialScrollBehavior().copyWith(
+                      dragDevices: {
+                        PointerDeviceKind.touch,
+                        PointerDeviceKind.mouse,
+                        PointerDeviceKind.trackpad,
                       },
-                      child: const Text(AppStrings.viewAll),
                     ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 205,
-                child: ScrollConfiguration(
-                  behavior: const MaterialScrollBehavior().copyWith(
-                    dragDevices: {
-                      PointerDeviceKind.touch,
-                      PointerDeviceKind.mouse,
-                      PointerDeviceKind.trackpad,
-                    },
+                    child: ListView.separated(
+                      controller: _storeScrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: data.stores.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final store = data.stores[index];
+                        return _StoreCard(
+                          store: store,
+                          selected: store.id == _selectedStoreId,
+                          onTap: () {
+                            setState(() {
+                              _selectedStoreId = _selectedStoreId == store.id
+                                  ? null
+                                  : store.id;
+                              _currentPage = 0;
+                            });
+                            _loadData(silent: true);
+                          },
+                        );
+                      },
+                    ),
                   ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  AppStrings.hotFood,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 38,
                   child: ListView.separated(
-                    controller: _storeScrollController,
                     scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: data.stores.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemCount: _categories.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
-                      final store = data.stores[index];
-                      return _StoreCard(
-                        store: store,
-                        selected: store.id == _selectedStoreId,
-                        onTap: () {
+                      final category = _categories[index];
+                      return ChoiceChip(
+                        label: Text(category),
+                        selected: _selectedCategory == category,
+                        onSelected: (_) {
                           setState(() {
-                            _selectedStoreId = _selectedStoreId == store.id ? null : store.id;
+                            _selectedCategory = category;
                             _currentPage = 0;
                           });
                           _loadData(silent: true);
@@ -391,126 +525,103 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                AppStrings.hotFood,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 38,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final category = _categories[index];
-                    return ChoiceChip(
-                      label: Text(category),
-                      selected: _selectedCategory == category,
-                      onSelected: (_) {
-                        setState(() {
-                          _selectedCategory = category;
-                          _currentPage = 0;
-                        });
-                        _loadData(silent: true);
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              if (displayedItems.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: Text(AppStrings.noFoodMatch)),
-                )
-              else
-                ...displayedItems.map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _FoodCard(
-                      item: item,
-                      onQuickAdd: () {
-                        widget.onAddToCart(
-                          item,
-                          const FoodCustomization(
-                            size: 'M',
-                            sugar: '70%',
-                            ice: '70%',
-                            toppings: [],
-                          ),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${AppStrings.addedToCart} ${item.name}'),
-                            duration: const Duration(milliseconds: 900),
-                          ),
-                        );
-                        setState(() {});
-                      },
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => FoodDetailPage(
-                              item: item,
-                              onAddToCart: widget.onAddToCart,
-                            ),
-                          ),
-                        );
-                        setState(() {});
-                      },
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 12),
 
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: _currentPage > 0 
-                      ? () { 
-                          _currentPage--; 
-                          _loadData(silent: true); 
-                        } 
-                      : null,
-                    icon: const Icon(Icons.chevron_left),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade200,
+                if (displayedItems.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: Text(AppStrings.noFoodMatch)),
+                  )
+                else
+                  ...displayedItems.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _FoodCard(
+                        item: item,
+                        onQuickAdd: () {
+                          widget.onAddToCart(
+                            item,
+                            const FoodCustomization(
+                              size: 'M',
+                              sugar: '70%',
+                              ice: '70%',
+                              toppings: [],
+                            ),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '${AppStrings.addedToCart} ${item.name}',
+                              ),
+                              duration: const Duration(milliseconds: 900),
+                            ),
+                          );
+                          setState(() {});
+                        },
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FoodDetailPage(
+                                item: item,
+                                onAddToCart: widget.onAddToCart,
+                              ),
+                            ),
+                          );
+                          setState(() {});
+                        },
+                      ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: _currentPage > 0
+                          ? () {
+                              _currentPage--;
+                              _loadData(silent: true);
+                            }
+                          : null,
+                      icon: const Icon(Icons.chevron_left),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade200,
+                      ),
                     ),
-                    child: Text(
-                      '${AppStrings.pageLabel} ${_currentPage + 1}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${AppStrings.pageLabel} ${_currentPage + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: displayedItems.length == _pageSize 
-                      ? () { 
-                          _currentPage++; 
-                          _loadData(silent: true); 
-                        } 
-                      : null,
-                    icon: const Icon(Icons.chevron_right),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade200,
+                    IconButton(
+                      onPressed: pagedItems.length == _pageSize
+                          ? () {
+                              _currentPage++;
+                              _loadData(silent: true);
+                            }
+                          : null,
+                      icon: const Icon(Icons.chevron_right),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade200,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
+                  ],
+                ),
+                const SizedBox(height: 40),
+              ],
             ],
           ),
           if (_isLoading)
@@ -561,7 +672,9 @@ class _StoreCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(14),
+              ),
               child: Image.network(
                 store.imageUrl,
                 height: 100,
@@ -583,12 +696,19 @@ class _StoreCard extends StatelessWidget {
                     store.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star, size: 14, color: Color(0xFFF59E0B)),
+                      const Icon(
+                        Icons.star,
+                        size: 14,
+                        color: Color(0xFFF59E0B),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         store.rating.toString(),
@@ -775,7 +895,8 @@ class _DealFoodItem extends StatelessWidget {
 
 class FoodDetailPage extends StatefulWidget {
   final MenuItemModel item;
-  final void Function(MenuItemModel item, FoodCustomization customization) onAddToCart;
+  final void Function(MenuItemModel item, FoodCustomization customization)
+  onAddToCart;
 
   const FoodDetailPage({
     super.key,
@@ -810,7 +931,7 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
     final totalPrice = widget.item.price + extraPrice + toppingsPrice;
 
     return Scaffold(
-      extendBodyBehindAppBar: true, 
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -847,7 +968,10 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                 children: [
                   Text(
                     widget.item.name,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -855,50 +979,68 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
                     style: const TextStyle(color: Colors.grey, fontSize: 15),
                   ),
                   const Divider(height: 40),
-                  
+
                   _sectionTitle('Chọn Size'),
                   Wrap(
                     spacing: 12,
-                    children: ['S', 'M', 'L'].map((s) => ChoiceChip(
-                      label: Text('Size $s'),
-                      selected: _selectedSize == s,
-                      onSelected: (_) => setState(() => _selectedSize = s),
-                    )).toList(),
+                    children: ['S', 'M', 'L']
+                        .map(
+                          (s) => ChoiceChip(
+                            label: Text('Size $s'),
+                            selected: _selectedSize == s,
+                            onSelected: (_) =>
+                                setState(() => _selectedSize = s),
+                          ),
+                        )
+                        .toList(),
                   ),
-                  
+
                   const SizedBox(height: 24),
                   _sectionTitle('Mức đường'),
                   Wrap(
                     spacing: 12,
-                    children: ['0%', '30%', '50%', '70%', '100%'].map((s) => ChoiceChip(
-                      label: Text(s),
-                      selected: _selectedSugar == s,
-                      onSelected: (_) => setState(() => _selectedSugar = s),
-                    )).toList(),
+                    children: ['0%', '30%', '50%', '70%', '100%']
+                        .map(
+                          (s) => ChoiceChip(
+                            label: Text(s),
+                            selected: _selectedSugar == s,
+                            onSelected: (_) =>
+                                setState(() => _selectedSugar = s),
+                          ),
+                        )
+                        .toList(),
                   ),
-                  
+
                   const SizedBox(height: 24),
                   _sectionTitle('Mức đá'),
                   Wrap(
                     spacing: 12,
-                    children: ['Không đá', '50%', '100%'].map((s) => ChoiceChip(
-                      label: Text(s),
-                      selected: _selectedIce == s,
-                      onSelected: (_) => setState(() => _selectedIce = s),
-                    )).toList(),
+                    children: ['Không đá', '50%', '100%']
+                        .map(
+                          (s) => ChoiceChip(
+                            label: Text(s),
+                            selected: _selectedIce == s,
+                            onSelected: (_) => setState(() => _selectedIce = s),
+                          ),
+                        )
+                        .toList(),
                   ),
-                  
+
                   const SizedBox(height: 24),
                   _sectionTitle('Topping (+5k)'),
                   Wrap(
                     spacing: 12,
-                    children: ['Trân châu', 'Thạch vải', 'Kem Cheese'].map((t) => FilterChip(
-                      label: Text(t),
-                      selected: _selectedToppings.contains(t),
-                      onSelected: (_) => _toggleTopping(t),
-                    )).toList(),
+                    children: ['Trân châu', 'Thạch vải', 'Kem Cheese']
+                        .map(
+                          (t) => FilterChip(
+                            label: Text(t),
+                            selected: _selectedToppings.contains(t),
+                            onSelected: (_) => _toggleTopping(t),
+                          ),
+                        )
+                        .toList(),
                   ),
-                  
+
                   const SizedBox(height: 100),
                 ],
               ),
@@ -916,7 +1058,11 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
           children: [
             Text(
               formatPriceVnd(totalPrice),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0E9F6E)),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0E9F6E),
+              ),
             ),
             const Spacer(),
             ElevatedButton(
@@ -956,12 +1102,8 @@ class _FoodDetailPageState extends State<FoodDetailPage> {
 class CartPage extends StatefulWidget {
   final CartController cart;
   final Function(int) onRemoveAt;
-  
-  const CartPage({
-    super.key,
-    required this.cart,
-    required this.onRemoveAt,
-  });
+
+  const CartPage({super.key, required this.cart, required this.onRemoveAt});
 
   @override
   State<CartPage> createState() => _CartPageState();
@@ -970,13 +1112,14 @@ class CartPage extends StatefulWidget {
 class _CartPageState extends State<CartPage> {
   final VoucherRepository _voucherRepository = VoucherRepository();
   final OrderRepository _orderRepository = OrderRepository();
-  final ShippingAddressRepository _addressRepository = ShippingAddressRepository();
-  
+  final ShippingAddressRepository _addressRepository =
+      ShippingAddressRepository();
+
   final TextEditingController _voucherController = TextEditingController();
   String? _voucherError;
   bool _isApplyingVoucher = false;
   bool _isPlacingOrder = false;
-  final double _shippingFee = 20000; 
+  final double _shippingFee = 20000;
   late Future<List<String>> _voucherHistoryFuture;
   ShippingAddress? _selectedAddress;
 
@@ -993,7 +1136,10 @@ class _CartPageState extends State<CartPage> {
       final addresses = await _addressRepository.listMine();
       if (addresses.isNotEmpty) {
         setState(() {
-          _selectedAddress = addresses.firstWhere((a) => a.isDefault, orElse: () => addresses.first);
+          _selectedAddress = addresses.firstWhere(
+            (a) => a.isDefault,
+            orElse: () => addresses.first,
+          );
         });
       }
     } catch (e) {
@@ -1046,7 +1192,7 @@ class _CartPageState extends State<CartPage> {
       });
 
       await VoucherHistory.addToHistory(code);
-      
+
       setState(() {
         _voucherHistoryFuture = VoucherHistory.getHistory();
       });
@@ -1076,11 +1222,15 @@ class _CartPageState extends State<CartPage> {
     setState(() => _isPlacingOrder = true);
 
     try {
-      final itemsData = widget.cart.items.map((item) => {
-        'product_id': item.item.id,
-        'quantity': item.quantity,
-        'unit_price': item.unitPrice,
-      }).toList();
+      final itemsData = widget.cart.items
+          .map(
+            (item) => {
+              'product_id': item.item.id,
+              'quantity': item.quantity,
+              'unit_price': item.unitPrice,
+            },
+          )
+          .toList();
 
       final orderId = await _orderRepository.createOrder(
         shippingAddressId: _selectedAddress!.id,
@@ -1094,9 +1244,12 @@ class _CartPageState extends State<CartPage> {
       if (!mounted) return;
 
       widget.cart.clear();
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đặt hàng thành công!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Đặt hàng thành công!'),
+          backgroundColor: Colors.green,
+        ),
       );
 
       Navigator.pushReplacement(
@@ -1104,9 +1257,9 @@ class _CartPageState extends State<CartPage> {
         MaterialPageRoute(builder: (_) => OrderDetailPage(orderId: orderId)),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi khi đặt hàng: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi khi đặt hàng: $e')));
     } finally {
       if (mounted) setState(() => _isPlacingOrder = false);
     }
@@ -1123,9 +1276,7 @@ class _CartPageState extends State<CartPage> {
         foregroundColor: Colors.white,
       ),
       body: items.isEmpty
-          ? const Center(
-              child: Text(AppStrings.cartEmpty),
-            )
+          ? const Center(child: Text(AppStrings.cartEmpty))
           : Column(
               children: [
                 Expanded(
@@ -1144,18 +1295,29 @@ class _CartPageState extends State<CartPage> {
                                 setState(() => widget.onRemoveAt(index));
                               },
                               onQuantityChanged: (newQuantity) {
-                                setState(() =>
-                                    widget.cart.updateQuantity(index, newQuantity));
+                                setState(
+                                  () => widget.cart.updateQuantity(
+                                    index,
+                                    newQuantity,
+                                  ),
+                                );
                               },
                               onEditCustomization: (newCustomization) {
-                                setState(() =>
-                                    widget.cart.updateItem(index, newCustomization));
+                                setState(
+                                  () => widget.cart.updateItem(
+                                    index,
+                                    newCustomization,
+                                  ),
+                                );
                               },
                             );
                           },
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1192,10 +1354,13 @@ class _CartPageState extends State<CartPage> {
                           padding: const EdgeInsets.all(16),
                           child: InkWell(
                             onTap: () async {
-                              final selected = await Navigator.push<ShippingAddress>(
-                                context,
-                                MaterialPageRoute(builder: (_) => const AddressesPage()),
-                              );
+                              final selected =
+                                  await Navigator.push<ShippingAddress>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const AddressesPage(),
+                                    ),
+                                  );
                               if (selected != null) {
                                 setState(() {
                                   _selectedAddress = selected;
@@ -1212,26 +1377,41 @@ class _CartPageState extends State<CartPage> {
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.location_on, color: Color(0xFF0E9F6E)),
+                                  const Icon(
+                                    Icons.location_on,
+                                    color: Color(0xFF0E9F6E),
+                                  ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           AppStrings.shippingAddress,
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                         Text(
-                                          _selectedAddress?.fullAddress ?? AppStrings.noAddressSelected,
+                                          _selectedAddress?.fullAddress ??
+                                              AppStrings.noAddressSelected,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontWeight: FontWeight.w500),
+                                          style: TextStyle(
+                                            color: Colors.grey.shade800,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                         if (_selectedAddress != null)
                                           Text(
                                             '${_selectedAddress!.recipientName} • ${_selectedAddress!.phoneNumber}',
-                                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                            style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                       ],
                                     ),
@@ -1243,7 +1423,10 @@ class _CartPageState extends State<CartPage> {
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1261,25 +1444,42 @@ class _CartPageState extends State<CartPage> {
                                 Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: widget.cart.subtotal < widget.cart.appliedVoucher!.minOrderValue
+                                    color:
+                                        widget.cart.subtotal <
+                                            widget
+                                                .cart
+                                                .appliedVoucher!
+                                                .minOrderValue
                                         ? Colors.orange.shade50
-                                        : widget.cart.appliedVoucher!.isExpiringSoon
-                                            ? Colors.yellow.shade50
-                                            : Colors.green.shade50,
+                                        : widget
+                                              .cart
+                                              .appliedVoucher!
+                                              .isExpiringSoon
+                                        ? Colors.yellow.shade50
+                                        : Colors.green.shade50,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: widget.cart.subtotal < widget.cart.appliedVoucher!.minOrderValue
+                                      color:
+                                          widget.cart.subtotal <
+                                              widget
+                                                  .cart
+                                                  .appliedVoucher!
+                                                  .minOrderValue
                                           ? Colors.orange.shade300
-                                          : widget.cart.appliedVoucher!.isExpiringSoon
-                                              ? Colors.yellow.shade300
-                                              : Colors.green.shade300,
+                                          : widget
+                                                .cart
+                                                .appliedVoucher!
+                                                .isExpiringSoon
+                                          ? Colors.yellow.shade300
+                                          : Colors.green.shade300,
                                     ),
                                   ),
                                   child: Row(
                                     children: [
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               widget.cart.appliedVoucher!.code,
@@ -1289,7 +1489,10 @@ class _CartPageState extends State<CartPage> {
                                               ),
                                             ),
                                             Text(
-                                              widget.cart.appliedVoucher!.description,
+                                              widget
+                                                  .cart
+                                                  .appliedVoucher!
+                                                  .description,
                                               style: const TextStyle(
                                                 color: Colors.black54,
                                                 fontSize: 12,
@@ -1301,28 +1504,49 @@ class _CartPageState extends State<CartPage> {
                                                 Icon(
                                                   Icons.schedule,
                                                   size: 12,
-                                                  color: widget.cart.appliedVoucher!.isExpiringSoon
+                                                  color:
+                                                      widget
+                                                          .cart
+                                                          .appliedVoucher!
+                                                          .isExpiringSoon
                                                       ? Colors.red
                                                       : Colors.grey,
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
-                                                  widget.cart.appliedVoucher!.expirationText,
+                                                  widget
+                                                      .cart
+                                                      .appliedVoucher!
+                                                      .expirationText,
                                                   style: TextStyle(
                                                     fontSize: 11,
-                                                    color: widget.cart.appliedVoucher!.isExpiringSoon
+                                                    color:
+                                                        widget
+                                                            .cart
+                                                            .appliedVoucher!
+                                                            .isExpiringSoon
                                                         ? Colors.red
                                                         : Colors.grey,
-                                                    fontWeight: widget.cart.appliedVoucher!.isExpiringSoon
+                                                    fontWeight:
+                                                        widget
+                                                            .cart
+                                                            .appliedVoucher!
+                                                            .isExpiringSoon
                                                         ? FontWeight.w600
                                                         : FontWeight.normal,
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            if (widget.cart.subtotal < widget.cart.appliedVoucher!.minOrderValue)
+                                            if (widget.cart.subtotal <
+                                                widget
+                                                    .cart
+                                                    .appliedVoucher!
+                                                    .minOrderValue)
                                               Padding(
-                                                padding: const EdgeInsets.only(top: 6),
+                                                padding: const EdgeInsets.only(
+                                                  top: 6,
+                                                ),
                                                 child: Text(
                                                   '⚠️ Đơn hàng phải từ ${formatPriceVnd(widget.cart.appliedVoucher!.minOrderValue)} để dùng',
                                                   style: const TextStyle(
@@ -1359,15 +1583,18 @@ class _CartPageState extends State<CartPage> {
                                               controller: _voucherController,
                                               decoration: InputDecoration(
                                                 isDense: true,
-                                                hintText: 'Vd: FREESHIP, GIAM20K...',
+                                                hintText:
+                                                    'Vd: FREESHIP, GIAM20K...',
                                                 border: OutlineInputBorder(
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
                                                 errorText: _voucherError,
-                                                contentPadding: const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 10,
-                                                ),
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 10,
+                                                    ),
                                               ),
                                               textCapitalization:
                                                   TextCapitalization.characters,
@@ -1375,14 +1602,19 @@ class _CartPageState extends State<CartPage> {
                                           ),
                                           const SizedBox(width: 8),
                                           ElevatedButton(
-                                            onPressed: _isApplyingVoucher ? null : _applyVoucher,
+                                            onPressed: _isApplyingVoucher
+                                                ? null
+                                                : _applyVoucher,
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF0E9F6E),
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 14,
-                                                vertical: 8,
+                                              backgroundColor: const Color(
+                                                0xFF0E9F6E,
                                               ),
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 8,
+                                                  ),
                                             ),
                                             child: _isApplyingVoucher
                                                 ? const SizedBox(
@@ -1391,14 +1623,16 @@ class _CartPageState extends State<CartPage> {
                                                     child: CircularProgressIndicator(
                                                       strokeWidth: 2,
                                                       valueColor:
-                                                          AlwaysStoppedAnimation<Color>(
-                                                            Colors.white,
-                                                          ),
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(Colors.white),
                                                     ),
                                                   )
                                                 : const Text(
                                                     AppStrings.applyLabel,
-                                                    style: TextStyle(fontSize: 12),
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                    ),
                                                   ),
                                           ),
                                         ],
@@ -1410,34 +1644,56 @@ class _CartPageState extends State<CartPage> {
                                           onPressed: _isApplyingVoucher
                                               ? null
                                               : () async {
-                                                  setState(() => _isApplyingVoucher = true);
-                                                  final bestVoucher = await _voucherRepository
-                                                      .suggestBestVoucher(widget.cart.subtotal);
+                                                  setState(
+                                                    () => _isApplyingVoucher =
+                                                        true,
+                                                  );
+                                                  final bestVoucher =
+                                                      await _voucherRepository
+                                                          .suggestBestVoucher(
+                                                            widget
+                                                                .cart
+                                                                .subtotal,
+                                                          );
                                                   if (bestVoucher != null) {
-                                                    widget.cart.applyVoucher(bestVoucher);
-                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                    widget.cart.applyVoucher(
+                                                      bestVoucher,
+                                                    );
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
                                                       SnackBar(
                                                         content: Text(
                                                           '✨ Đã áp dụng voucher tốt nhất: ${bestVoucher.code}',
                                                         ),
-                                                        backgroundColor: Colors.blue,
+                                                        backgroundColor:
+                                                            Colors.blue,
                                                       ),
                                                     );
                                                     setState(() {
                                                       _voucherError = null;
-                                                      _isApplyingVoucher = false;
+                                                      _isApplyingVoucher =
+                                                          false;
                                                     });
                                                   } else {
                                                     setState(() {
-                                                      _voucherError = 'Không có voucher nào phù hợp';
-                                                      _isApplyingVoucher = false;
+                                                      _voucherError =
+                                                          'Không có voucher nào phù hợp';
+                                                      _isApplyingVoucher =
+                                                          false;
                                                     });
                                                   }
                                                 },
-                                          icon: const Icon(Icons.lightbulb_outline),
-                                          label: const Text(AppStrings.suggestVoucher),
+                                          icon: const Icon(
+                                            Icons.lightbulb_outline,
+                                          ),
+                                          label: const Text(
+                                            AppStrings.suggestVoucher,
+                                          ),
                                           style: TextButton.styleFrom(
-                                            foregroundColor: const Color(0xFF0E9F6E),
+                                            foregroundColor: const Color(
+                                              0xFF0E9F6E,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -1449,12 +1705,14 @@ class _CartPageState extends State<CartPage> {
                               FutureBuilder<List<String>>(
                                 future: _voucherHistoryFuture,
                                 builder: (context, snapshot) {
-                                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                                  if (!snapshot.hasData ||
+                                      snapshot.data!.isEmpty) {
                                     return const SizedBox.shrink();
                                   }
                                   final history = snapshot.data!;
                                   return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         AppStrings.recentVouchers,
@@ -1474,16 +1732,18 @@ class _CartPageState extends State<CartPage> {
                                               _applyVoucher();
                                             },
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 6,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 6,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: Colors.blue.shade50,
                                                 border: Border.all(
                                                   color: Colors.blue.shade200,
                                                 ),
-                                                borderRadius: BorderRadius.circular(8),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
                                               child: Text(
                                                 code,
@@ -1501,8 +1761,8 @@ class _CartPageState extends State<CartPage> {
                                   );
                                 },
                               ),
-                          ],
-                        ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1544,9 +1804,13 @@ class _CartPageState extends State<CartPage> {
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.only(left: 16, top: 4),
+                                    padding: const EdgeInsets.only(
+                                      left: 16,
+                                      top: 4,
+                                    ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           mainAxisAlignment:
@@ -1635,8 +1899,10 @@ class _CartPageState extends State<CartPage> {
                       if (widget.cart.appliedVoucher != null) ...[
                         const SizedBox(height: 4),
                         _PricingRow(
-                          label: 'Giảm giá (${widget.cart.appliedVoucher!.code})',
-                          value: '-${formatPriceVnd(widget.cart.discountAmount)}',
+                          label:
+                              'Giảm giá (${widget.cart.appliedVoucher!.code})',
+                          value:
+                              '-${formatPriceVnd(widget.cart.discountAmount)}',
                           valueColor: Colors.green,
                         ),
                       ],
@@ -1675,15 +1941,22 @@ class _CartPageState extends State<CartPage> {
                             ),
                           ),
                           child: _isPlacingOrder
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
                               : const Text(
-                            AppStrings.placeOrder,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+                                  AppStrings.placeOrder,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -1726,7 +1999,9 @@ class _CartItemTile extends StatelessWidget {
         onTap: () {
           showGeneralDialog(
             context: context,
-            barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+            barrierLabel: MaterialLocalizations.of(
+              context,
+            ).modalBarrierDismissLabel,
             barrierColor: Colors.black.withOpacity(0.5),
             transitionDuration: const Duration(milliseconds: 300),
             pageBuilder: (context, animation1, animation2) {
@@ -1742,12 +2017,12 @@ class _CartItemTile extends StatelessWidget {
             transitionBuilder: (context, animation1, animation2, child) {
               return ScaleTransition(
                 scale: Tween<double>(begin: 0.5, end: 1.0).animate(
-                  CurvedAnimation(parent: animation1, curve: Curves.easeOutBack),
+                  CurvedAnimation(
+                    parent: animation1,
+                    curve: Curves.easeOutBack,
+                  ),
                 ),
-                child: FadeTransition(
-                  opacity: animation1,
-                  child: child,
-                ),
+                child: FadeTransition(opacity: animation1, child: child),
               );
             },
           );
@@ -1821,10 +2096,7 @@ class _CartItemTile extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 item.customization.summary,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1855,7 +2127,9 @@ class _CartItemTile extends StatelessWidget {
                           child: Center(
                             child: Text(
                               item.quantity.toString(),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -1901,7 +2175,8 @@ class _EditCustomizationDialog extends StatefulWidget {
   });
 
   @override
-  State<_EditCustomizationDialog> createState() => _EditCustomizationDialogState();
+  State<_EditCustomizationDialog> createState() =>
+      _EditCustomizationDialogState();
 }
 
 class _EditCustomizationDialogState extends State<_EditCustomizationDialog> {
@@ -1976,47 +2251,68 @@ class _EditCustomizationDialogState extends State<_EditCustomizationDialog> {
                 children: [
                   Text(
                     widget.item.name,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _sectionTitle('Chọn Size'),
                   Wrap(
                     spacing: 12,
-                    children: ['S', 'M', 'L'].map((s) => ChoiceChip(
-                      label: Text('Size $s'),
-                      selected: _selectedSize == s,
-                      onSelected: (_) => setState(() => _selectedSize = s),
-                    )).toList(),
+                    children: ['S', 'M', 'L']
+                        .map(
+                          (s) => ChoiceChip(
+                            label: Text('Size $s'),
+                            selected: _selectedSize == s,
+                            onSelected: (_) =>
+                                setState(() => _selectedSize = s),
+                          ),
+                        )
+                        .toList(),
                   ),
                   const SizedBox(height: 16),
                   _sectionTitle('Mức đường'),
                   Wrap(
                     spacing: 12,
-                    children: ['0%', '30%', '50%', '70%', '100%'].map((s) => ChoiceChip(
-                      label: Text(s),
-                      selected: _selectedSugar == s,
-                      onSelected: (_) => setState(() => _selectedSugar = s),
-                    )).toList(),
+                    children: ['0%', '30%', '50%', '70%', '100%']
+                        .map(
+                          (s) => ChoiceChip(
+                            label: Text(s),
+                            selected: _selectedSugar == s,
+                            onSelected: (_) =>
+                                setState(() => _selectedSugar = s),
+                          ),
+                        )
+                        .toList(),
                   ),
                   const SizedBox(height: 16),
                   _sectionTitle('Mức đá'),
                   Wrap(
                     spacing: 12,
-                    children: ['Không đá', '50%', '100%'].map((s) => ChoiceChip(
-                      label: Text(s),
-                      selected: _selectedIce == s,
-                      onSelected: (_) => setState(() => _selectedIce = s),
-                    )).toList(),
+                    children: ['Không đá', '50%', '100%']
+                        .map(
+                          (s) => ChoiceChip(
+                            label: Text(s),
+                            selected: _selectedIce == s,
+                            onSelected: (_) => setState(() => _selectedIce = s),
+                          ),
+                        )
+                        .toList(),
                   ),
                   const SizedBox(height: 16),
                   _sectionTitle('Topping (+5k)'),
                   Wrap(
                     spacing: 12,
-                    children: ['Trân châu', 'Thạch vải', 'Kem Cheese'].map((t) => FilterChip(
-                      label: Text(t),
-                      selected: _selectedToppings.contains(t),
-                      onSelected: (_) => _toggleTopping(t),
-                    )).toList(),
+                    children: ['Trân châu', 'Thạch vải', 'Kem Cheese']
+                        .map(
+                          (t) => FilterChip(
+                            label: Text(t),
+                            selected: _selectedToppings.contains(t),
+                            onSelected: (_) => _toggleTopping(t),
+                          ),
+                        )
+                        .toList(),
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -2083,16 +2379,10 @@ class _PricingRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14),
-        ),
+        Text(label, style: const TextStyle(fontSize: 14)),
         Text(
           value,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: valueColor,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, color: valueColor),
         ),
       ],
     );
