@@ -98,9 +98,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         children: [
           _buildStep(AppStrings.statusPending, true),
           _buildLine(currentStatus != OrderStatus.pending && !isCancelled),
-          _buildStep(AppStrings.statusBuying, (currentStatus == OrderStatus.buying || currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
+          _buildStep(AppStrings.statusBuying, (currentStatus == OrderStatus.buying || currentStatus == OrderStatus.delivering ||
+              currentStatus == OrderStatus.completed) && !isCancelled),
           _buildLine((currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
-          _buildStep(AppStrings.statusDelivering, (currentStatus == OrderStatus.delivering || currentStatus == OrderStatus.completed) && !isCancelled),
+          _buildStep(AppStrings.statusDelivering, (currentStatus == OrderStatus.delivering ||
+              currentStatus == OrderStatus.completed) && !isCancelled),
           _buildLine(currentStatus == OrderStatus.completed && !isCancelled),
           _buildStep(AppStrings.statusCompleted, currentStatus == OrderStatus.completed && !isCancelled),
 
